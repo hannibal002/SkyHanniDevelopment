@@ -1,15 +1,92 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<!--suppress PluginXmlI18n -->
 <idea-plugin>
-    <id>com.github.davidarthurcole.skyhanniintellijplugin</id>
+    <id>skyhanni.plugin</id>
     <name>SkyHanniIntelliJPlugin</name>
     <vendor>davidarthurcole</vendor>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.java</depends>
+    <depends>org.jetbrains.kotlin</depends>
 
-    <resource-bundle>messages.MyBundle</resource-bundle>
+    <resource-bundle>messages.SkyHanniBundle</resource-bundle>
+
+    <!-- We need to specify that we support K2 mode -->
+    <extensions defaultExtensionNs="org.jetbrains.kotlin">
+        <supportsKotlinPluginMode supportsK2="true"/>
+    </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.davidarthurcole.skyhanniintellijplugin.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
-        <postStartupActivity implementation="com.github.davidarthurcole.skyhanniintellijplugin.startup.MyProjectActivity" />
+        <postStartupActivity
+                implementation="skyhanni.plugin.startup.SkyHanniPluginActivity"/>
+
+        <codeInsight.declarativeInlayProvider language="kotlin"
+                                              implementationClass="skyhanni.plugin.areas.event.EventHandlerInlayHintsProvider"
+                                              isEnabledByDefault="true"
+                                              group="OTHER_GROUP"
+                                              providerId="skyhanni.event.primaryfunction.hint"
+                                              nameKey="inlay.hints.event.primaryfunction.name"
+                                              bundle="messages.SkyHanniBundle"/>
+
+        <codeInsight.lineMarkerProvider
+                language="kotlin"
+                implementationClass="skyhanni.plugin.areas.misc.Regex101LineMarkerProvider"/>
+
+        <!-- Notification group used by config inspections/intentions for user feedback.
+             Must be declared here so NotificationGroupManager can find it at runtime. -->
+        <notificationGroup id="SkyHanni Plugin"
+                           displayType="BALLOON"
+                           isLogByDefault="false"/>
+
+        <!-- Inspection: event handler functions should be annotated with @HandleEvent -->
+        <localInspection
+                language="kotlin"
+                groupName="SkyHanni"
+                displayName="Event handler function should be annotated with @HandleEvent"
+                shortName="HandleEventInspection"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="skyhanni.plugin.areas.event.HandleEventInspection"/>
+
+        <!-- Warns when a SkyHanni object with event handlers or repo patterns
+             is missing the @SkyHanniModule annotation, and errors when a class
+             (not object) has the annotation applied. -->
+        <localInspection
+                language="kotlin"
+                groupName="SkyHanni"
+                displayName="Module should have a @SkyHanniModule annotation"
+                shortName="SkyHanniModuleInspection"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="skyhanni.plugin.areas.misc.SkyHanniModuleInspection"/>
+
+        <!-- Highlights @ConfigOption properties and offers "Copy config path" quick fix -->
+        <localInspection
+                language="kotlin"
+                groupName="SkyHanni"
+                displayName="Copy config path for a @ConfigOption property"
+                shortName="CopyConfigPath"
+                enabledByDefault="true"
+                level="INFORMATION"
+                implementationClass="skyhanni.plugin.areas.config.CopyConfigPathInspection"/>
+
+        <!-- Line marker provider for functions annotated with @HandleEvent -->
+        <codeInsight.lineMarkerProvider
+                language="kotlin"
+                implementationClass="skyhanni.plugin.areas.event.EventHandlerLineMarkerProvider"/>
+
+        <!-- Intention: convert @ConfigOption var T to val Property<T> -->
+        <intentionAction>
+            <language>kotlin</language>
+            <className>skyhanni.plugin.areas.config.ConvertConfigToPropertyIntention</className>
+            <category>SkyHanni</category>
+        </intentionAction>
+
+        <!-- Intention: navigate from event.move("dotted.path") string to config property -->
+        <intentionAction>
+            <language>kotlin</language>
+            <className>skyhanni.plugin.areas.config.NavigateToConfigIntention</className>
+            <category>SkyHanni</category>
+        </intentionAction>
     </extensions>
 </idea-plugin>

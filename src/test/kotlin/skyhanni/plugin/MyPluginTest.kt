@@ -1,4 +1,4 @@
-package com.github.davidarthurcole.skyhanniintellijplugin
+package skyhanni.plugin
 
 import com.intellij.ide.highlighter.XmlFileType
 import com.intellij.openapi.components.service
@@ -6,7 +6,7 @@ import com.intellij.psi.xml.XmlFile
 import com.intellij.testFramework.TestDataPath
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.PsiErrorElementUtil
-import com.github.davidarthurcole.skyhanniintellijplugin.services.MyProjectService
+import skyhanni.plugin.services.SkyHanniPluginService
 
 @TestDataPath("\$CONTENT_ROOT/src/test/testData")
 class MyPluginTest : BasePlatformTestCase() {
@@ -30,9 +30,7 @@ class MyPluginTest : BasePlatformTestCase() {
     }
 
     fun testProjectService() {
-        val projectService = project.service<MyProjectService>()
-
-        assertNotSame(projectService.getRandomNumber(), projectService.getRandomNumber())
+        val projectService = project.service<SkyHanniPluginService>()
     }
 
     override fun getTestDataPath() = "src/test/testData/rename"

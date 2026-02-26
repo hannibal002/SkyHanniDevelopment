@@ -1,0 +1,2 @@
+@ConfigOption(name = "My Option", desc = "")
+var myOption: Boolean = false
