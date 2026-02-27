@@ -5,9 +5,6 @@ import org.jetbrains.kotlin.idea.codeinsight.api.classic.intentions.SelfTargetin
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtProperty
 
-const val CONFIG_OPTION_ANNOTATION = "ConfigOption"
-const val PROPERTY_FQN = "io.github.notenoughupdates.moulconfig.observer.Property"
-
 class ConvertConfigToPropertyIntention :
     SelfTargetingOffsetIndependentIntention<KtProperty>(
         KtProperty::class.java,
@@ -43,24 +40,4 @@ class ConvertConfigToPropertyIntention :
             (file.importList ?: file).add(importDirective)
         }
     }
-
-    // Maybe can go?
-    // SelfTargetingOffsetIndependentIntention automatically generates a preview
-    // by running applyTo on a sandboxed copy of the file
-    /*override fun generatePreview(project: Project, editor: Editor, file: PsiFile): IntentionPreviewInfo {
-        val element = file.findElementAt(editor.caretModel.offset)
-            ?.getStrictParentOfType<KtProperty>()
-            ?: return IntentionPreviewInfo.EMPTY
-
-        // Guard: preview requires type and initializer to be present
-        val typeText = element.typeReference?.text ?: return IntentionPreviewInfo.EMPTY
-        val initText = element.initializer?.text ?: return IntentionPreviewInfo.EMPTY
-        val modifiers = element.modifierList?.text?.let { "$it " } ?: ""
-        val name = element.name ?: return IntentionPreviewInfo.EMPTY
-
-        val before = "${modifiers}var $name: $typeText = $initText"
-        val after = "${modifiers}val $name: Property<$typeText> = Property.of($initText)"
-
-        return IntentionPreviewInfo.CustomDiff(file.fileType, before, after)
-    }*/
 }

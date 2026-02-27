@@ -28,6 +28,14 @@
                                               nameKey="inlay.hints.event.primaryfunction.name"
                                               bundle="messages.SkyHanniBundle"/>
 
+        <codeInsight.declarativeInlayProvider language="kotlin"
+                                              implementationClass="skyhanni.plugin.areas.config.ConfigPathInlayHintsProvider"
+                                              isEnabledByDefault="true"
+                                              group="OTHER_GROUP"
+                                              providerId="skyhanni.config.path.hint"
+                                              nameKey="inlay.hints.config.path.name"
+                                              bundle="messages.SkyHanniBundle"/>
+
         <codeInsight.lineMarkerProvider
                 language="kotlin"
                 implementationClass="skyhanni.plugin.areas.misc.Regex101LineMarkerProvider"/>
@@ -74,6 +82,10 @@
         <codeInsight.lineMarkerProvider
                 language="kotlin"
                 implementationClass="skyhanni.plugin.areas.event.EventHandlerLineMarkerProvider"/>
+
+        <!-- Reference contributor for string literals in event.move("dotted.path") to navigate to config properties -->
+        <psi.referenceContributor language="kotlin"
+                                  implementation="skyhanni.plugin.areas.config.ConfigPathReferenceContributor"/>
 
         <!-- Intention: convert @ConfigOption var T to val Property<T> -->
         <intentionAction>

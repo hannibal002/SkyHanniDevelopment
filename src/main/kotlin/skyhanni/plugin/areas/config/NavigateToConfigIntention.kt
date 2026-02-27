@@ -18,12 +18,6 @@ import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 
-const val BASE_CONFIG_PKG = "at.hannibal2.skyhanni.config"
-const val BASE_CONFIG_CLASS = "at.hannibal2.skyhanni.config.Features"
-const val PROFILE_STORAGE_CLASS = "at.hannibal2.skyhanni.config.storage.ProfileSpecificStorage"
-const val PLAYER_STORAGE_CLASS = "at.hannibal2.skyhanni.config.storage.PlayerSpecificStorage"
-const val NOTIFICATION_GROUP = "SkyHanni Plugin"
-
 /**
  * Activates on string literals inside `event.move("some.dotted.path")` calls.
  * Navigates through the config class hierarchy to the referenced property.
