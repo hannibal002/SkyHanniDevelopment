@@ -16,7 +16,6 @@ import com.intellij.util.ProcessingContext
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
-import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 
 class ConfigPathReferenceContributor : PsiReferenceContributor() {
@@ -36,7 +35,7 @@ private class ConfigPathReferenceProvider : PsiReferenceProvider() {
         context: ProcessingContext
     ): Array<PsiReference> {
         val str = element as? KtStringTemplateExpression ?: return PsiReference.EMPTY_ARRAY
-        val literal = str.text.removeSurrounding("\"")
+        val literal = evaluateStringTemplate(str) ?: return PsiReference.EMPTY_ARRAY
         if (!literal.contains('.')) return PsiReference.EMPTY_ARRAY
 
         // Only activate inside event.move("...") calls
@@ -56,7 +55,7 @@ private class ConfigPathReference(
 ) : PsiReferenceBase<KtStringTemplateExpression>(element, TextRange(1, element.textLength - 1), true) {
 
     override fun resolve(): PsiElement? {
-        val path = element.text.removeSurrounding("\"")
+        val path = evaluateStringTemplate(element) ?: return null
         val segments = path.split('.').toMutableList().takeIf { it.isNotEmpty() } ?: return null
         val project = element.project
 
@@ -69,12 +68,10 @@ private class ConfigPathReference(
         var current = findKtClass(rootClassName) ?: return null
 
         for ((i, name) in segments.withIndex()) {
-            val prop = current.declarations
-                .filterIsInstance<KtProperty>()
-                .firstOrNull { it.name == name }
-                ?: return null
+            val (prop, isInherited) = findPropertyInHierarchy(current, name, project) ?: return null
 
-            if (i == segments.lastIndex) return prop.navigationElement
+            if (isInherited) return current.navigationElement
+            else if (i == segments.lastIndex) return prop.navigationElement
 
             val typeText = prop.typeReference?.text ?: return null
             if (i == segments.lastIndex - 1 &&

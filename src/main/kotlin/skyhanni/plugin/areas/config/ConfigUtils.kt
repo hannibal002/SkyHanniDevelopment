@@ -1,13 +1,21 @@
 package skyhanni.plugin.areas.config
 
-
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.KtBlockExpression
+import org.jetbrains.kotlin.psi.KtBlockStringTemplateEntry
 import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtFunctionLiteral
+import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtSimpleNameStringTemplateEntry
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import kotlin.collections.setOf
 
 const val CONFIG_OPTION_ANNOTATION = "ConfigOption"
@@ -71,9 +79,75 @@ fun findContainingProperty(
 
     for (ref in ReferencesSearch.search(psiClass, GlobalSearchScope.projectScope(project)).findAll()) {
         val prop = PsiTreeUtil.getParentOfType(ref.element, KtProperty::class.java) ?: continue
+
+        // Must be a class member, not a local variable or function parameter
         val parentClass = PsiTreeUtil.getParentOfType(prop, KtClassOrObject::class.java) ?: continue
         if (parentClass == kClass) continue
+        if (parentClass.fqName?.asString()?.startsWith(BASE_CONFIG_PKG) != true) continue
+        if (prop.parent !is org.jetbrains.kotlin.psi.KtClassBody) continue
+
         return Pair(prop.name ?: continue, parentClass)
+    }
+    return null
+}
+
+/**
+ * Evaluates a KtStringTemplateExpression to a plain string by resolving
+ * simple local-val substitutions. Returns null if any part can't be resolved.
+ */
+fun evaluateStringTemplate(element: KtStringTemplateExpression): String? {
+    val sb = StringBuilder()
+    for (entry in element.entries) {
+        when (entry) {
+            is KtLiteralStringTemplateEntry -> sb.append(entry.text)
+            is KtSimpleNameStringTemplateEntry -> {
+                val resolved = resolveLocalValText(
+                    entry.expression as? KtNameReferenceExpression ?: return null
+                ) ?: return null
+                sb.append(resolved)
+            }
+            is KtBlockStringTemplateEntry -> return null
+            else -> return null
+        }
+    }
+    return sb.toString()
+}
+
+fun resolveLocalValText(ref: KtNameReferenceExpression): String? {
+    var scope: PsiElement? = ref.parent
+    while (scope != null) {
+        if (scope is KtBlockExpression || scope is KtFunctionLiteral) {
+            val match = scope.children.filterIsInstance<KtProperty>()
+                .firstOrNull { it.name == ref.getReferencedName() && !it.isVar }
+            if (match != null) {
+                val init = match.initializer as? KtStringTemplateExpression ?: return null
+                return evaluateStringTemplate(init)
+            }
+        }
+        scope = scope.parent
+    }
+    return null
+}
+
+/**
+ * Finds a property by name in [kClass] or any of its supertypes within the config package.
+ * Returns Pair(property, isInherited) — isInherited=true means it lives in a supertype.
+ */
+fun findPropertyInHierarchy(kClass: KtClassOrObject, name: String, project: Project): Pair<KtProperty, Boolean>? {
+    val direct = kClass.declarations.filterIsInstance<KtProperty>().firstOrNull { it.name == name }
+    if (direct != null) return Pair(direct, false)
+
+    val scope = GlobalSearchScope.projectScope(project)
+    for (superEntry in kClass.superTypeListEntries) {
+        val rawType = superEntry.typeReference?.text
+            ?.substringBefore('<')?.substringBefore('?') ?: continue
+        val superPsi = PsiShortNamesCache.getInstance(project)
+            .getClassesByName(rawType, scope)
+            .firstOrNull { it.qualifiedName?.startsWith(BASE_CONFIG_PKG) == true }
+            ?: continue
+        val superKt = superPsi.navigationElement as? KtClassOrObject ?: continue
+        val found = findPropertyInHierarchy(superKt, name, project) ?: continue
+        return Pair(found.first, true)
     }
     return null
 }

@@ -15,7 +15,6 @@ import org.jetbrains.kotlin.idea.codeinsight.api.classic.intentions.SelfTargetin
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
-import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 
 /**
@@ -37,10 +36,9 @@ class NavigateToConfigIntention :
         IntentionPreviewInfo.EMPTY
 
     override fun isApplicableTo(element: KtStringTemplateExpression): Boolean {
-        val literal = element.text.removeSurrounding("\"")
+        val literal = evaluateStringTemplate(element) ?: return false
         if (!literal.contains('.')) return false
 
-        // Only activate inside event.move("...") calls
         val call = PsiTreeUtil.getParentOfType(element, KtCallExpression::class.java) ?: return false
         val dot = call.parent as? KtDotQualifiedExpression ?: return false
         return dot.receiverExpression.text == "event" && call.calleeExpression?.text == "move"
@@ -48,7 +46,10 @@ class NavigateToConfigIntention :
 
     override fun applyTo(element: KtStringTemplateExpression, editor: Editor?) {
         val project = element.project
-        val path = element.text.removeSurrounding("\"")
+        val path = evaluateStringTemplate(element) ?: run {
+            warn(project, "Could not evaluate string template '${element.text}'")
+            return
+        }
         val segments = path.split('.').toMutableList().takeIf { it.isNotEmpty() } ?: return
 
         // Resolve the root class, consuming prefix segments where applicable
@@ -64,13 +65,16 @@ class NavigateToConfigIntention :
         }
 
         for ((i, name) in segments.withIndex()) {
-            val prop = current.declarations
-                .filterIsInstance<KtProperty>()
-                .firstOrNull { it.name == name }
-                ?: run {
-                    warn(project, "Property '$name' not found in ${current.name} for path '$path'")
-                    return
-                }
+            val (prop, isInherited) = findPropertyInHierarchy(current, name, project) ?: run {
+                warn(project, "Property '$name' not found in ${current.name} for path '$path'")
+                return
+            }
+
+            // Inherited property — navigate to the class we were traversing, not the supertype
+            if (isInherited) {
+                (current.navigationElement as? NavigatablePsiElement)?.navigate(true)
+                return
+            }
 
             // Last segment — navigate directly to the property
             if (i == segments.lastIndex) {
