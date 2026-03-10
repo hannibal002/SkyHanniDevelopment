@@ -100,5 +100,13 @@
             <className>skyhanni.plugin.areas.config.NavigateToConfigIntention</className>
             <category>SkyHanni</category>
         </intentionAction>
+
+        <!-- Intention: Create a config migration from a config option -->
+        <intentionAction>
+            <language>kotlin</language>
+            <className>skyhanni.plugin.areas.config.CreateConfigMigrationIntention</className>
+            <category>SkyHanni</category>
+        </intentionAction>
+
     </extensions>
 </idea-plugin>
