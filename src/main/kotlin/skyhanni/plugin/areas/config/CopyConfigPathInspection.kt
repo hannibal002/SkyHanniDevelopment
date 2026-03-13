@@ -30,7 +30,6 @@ class CopyConfigPathInspection : AbstractKotlinInspection() {
                 if (property.annotationEntries.none { it.shortName?.asString() == CONFIG_OPTION_ANNOTATION }) return
                 val containingClass = PsiTreeUtil.getParentOfType(property, KtClassOrObject::class.java) ?: return
                 if (containingClass.isAbstract()) return
-
                 holder.registerProblem(
                     property.nameIdentifier ?: property,
                     "Copy config path",

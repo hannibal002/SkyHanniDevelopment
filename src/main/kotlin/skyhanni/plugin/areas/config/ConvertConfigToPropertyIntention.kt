@@ -1,12 +1,12 @@
 package skyhanni.plugin.areas.config
 
 import com.intellij.openapi.editor.Editor
+import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.idea.codeinsight.api.classic.intentions.SelfTargetingOffsetIndependentIntention
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtTypeReference
-import com.intellij.psi.util.PsiTreeUtil
 
 class ConvertConfigToPropertyIntention :
     SelfTargetingOffsetIndependentIntention<KtProperty>(

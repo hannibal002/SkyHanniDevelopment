@@ -45,7 +45,7 @@ class HandleEventInspection : AbstractKotlinInspection() {
 
             val isPrimaryFunctionName = primaryNameMap.containsKey(functionName)
 
-            // K2 compatibility guard — type resolution can throw in K2 mode
+            // K2 compatibility guard - type resolution can throw in K2 mode
             val isEventParam = run {
                 val typeRef = function.valueParameters.firstOrNull()?.typeReference ?: return@run false
                 val rawType = typeRef.text

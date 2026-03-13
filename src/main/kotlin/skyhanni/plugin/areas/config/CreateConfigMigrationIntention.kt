@@ -31,7 +31,7 @@ private const val MIGRATOR_FQN_PREFIX = "at.hannibal2.skyhanni"
  * `event.move(...)` call into the containing class's `onConfigFix` handler,
  * creating the companion object and function if they don't already exist.
  *
- * Reads and — if this is the first migration in the current batch — increments
+ * Reads and - if this is the first migration in the current batch - increments
  * `ConfigUpdaterMigrator.CONFIG_VERSION`. A batch is identified by scanning for
  * any existing `event.move(since = N)` call that already uses the current version;
  * if one is found, that version is reused without incrementing.
@@ -45,6 +45,12 @@ class CreateConfigMigrationIntention :
     override fun generatePreview(project: Project, editor: Editor, file: PsiFile): IntentionPreviewInfo =
         IntentionPreviewInfo.EMPTY
 
+    /**
+     * Deliberately avoids calling [computeConfigPath] here;
+     * that triggers [com.intellij.psi.search.searches.ReferencesSearch]
+     * which causes IntelliJ to re-evaluate intention applicability on discovered elements,
+     * leading to infinite recursion. The path is resolved lazily in [applyTo] instead.
+     */
     override fun isApplicableTo(element: KtProperty): Boolean {
         if (element.annotationEntries.none { it.shortName?.asString() == CONFIG_OPTION_ANNOTATION }) return false
         val containingClass = PsiTreeUtil.getParentOfType(element, KtClassOrObject::class.java) ?: return false

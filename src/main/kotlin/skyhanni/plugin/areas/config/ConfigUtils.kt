@@ -21,7 +21,7 @@ import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 const val CONFIG_OPTION_ANNOTATION = "ConfigOption"
 
 const val BASE_CONFIG_PKG = "at.hannibal2.skyhanni.config"
-const val BASE_CONFIG_CLASS = "at.hannibal2.skyhanni.config.Features"
+const val BASE_CONFIG_CLASS = "at.hannibal2.skyhanni.config.SkyHanniConfig"
 const val PROFILE_STORAGE_CLASS = "at.hannibal2.skyhanni.config.storage.ProfileSpecificStorage"
 const val PLAYER_STORAGE_CLASS = "at.hannibal2.skyhanni.config.storage.PlayerSpecificStorage"
 
@@ -29,53 +29,63 @@ const val PROPERTY_FQN = "io.github.notenoughupdates.moulconfig.observer.Propert
 
 const val NOTIFICATION_GROUP = "SkyHanni Plugin"
 
-/** FQNs that are considered config roots — traversal stops when one is reached. */
+/** FQNs that are considered config roots - traversal stops when one is reached. */
 val ROOT_CONFIG_FQNS = setOf(BASE_CONFIG_CLASS, PROFILE_STORAGE_CLASS, PLAYER_STORAGE_CLASS)
-
-/**
- * The "modules.editor." prefix that appears in the raw path but should be
- * stripped from the user-visible path.
- */
-const val STRIP_PREFIX = "modules.editor."
 
 fun KtClassOrObject.isAbstract() = hasModifier(KtTokens.ABSTRACT_KEYWORD)
 
+/** Carries the result of walking one level up the config tree. */
+data class ContainingPropertyResult(
+    val name: String,
+    val parentClass: KtClassOrObject,
+    val property: KtProperty,
+)
+
+/** A single resolved segment in a config path, paired with its PSI navigation target. */
+data class ConfigPathSegment(val name: String, val target: PsiElement?)
+
 /**
  * Walks up the config class hierarchy via reverse reference search,
- * building a dotted path from the nearest root class down to [prop].
+ * building a list of [ConfigPathSegment]s from the nearest root class down to [prop].
  *
- * Returns e.g. `"inventory.items.slot"` with [STRIP_PREFIX] removed,
- * or `null` if the property is in an abstract class or the name is unavailable.
+ * Returns `null` if [prop] lives in an abstract class or its name is unavailable.
  */
-fun computeConfigPath(prop: KtProperty): String? {
+fun computeConfigPathSegments(prop: KtProperty): List<ConfigPathSegment>? {
     val project = prop.project
-    val segments = mutableListOf<String>()
-    segments.add(prop.name ?: return null)
+    val segments = mutableListOf<ConfigPathSegment>()
+    segments.add(ConfigPathSegment(prop.name ?: return null, prop.navigationElement))
 
     var currentClass = PsiTreeUtil.getParentOfType(prop, KtClassOrObject::class.java)
     if (currentClass?.isAbstract() == true) return null
 
     while (currentClass != null) {
         if (currentClass.fqName?.asString() in ROOT_CONFIG_FQNS) break
-        val (propertyName, parentClass) = findContainingProperty(currentClass, project) ?: break
-        segments.add(propertyName)
-        currentClass = parentClass
+        val result = findContainingProperty(currentClass, project) ?: break
+        segments.add(ConfigPathSegment(result.name, result.property.navigationElement))
+        currentClass = result.parentClass
     }
 
     segments.reverse()
-    return segments.joinToString(".").removePrefix(STRIP_PREFIX).takeIf { it.isNotEmpty() }
+    return segments.takeIf { it.isNotEmpty() }
 }
 
 /**
+ * Convenience over [computeConfigPathSegments] returning the dotted path string,
+ * or `null` if the path cannot be computed.
+ */
+fun computeConfigPath(prop: KtProperty): String? =
+    computeConfigPathSegments(prop)?.joinToString(".") { it.name }
+
+/**
  * Given a config class, finds the property in another class whose type
- * references this class — i.e. walks one level up the config tree.
+ * references this class - i.e. walks one level up the config tree.
  *
  * Searches directly on the [KtClassOrObject] so that Kotlin-indexed type
  * references (which are not tied to the Java light class) are found correctly.
  *
- * Returns `Pair(propertyName, containingClass)`, or `null` if at the root.
+ * Returns a [ContainingPropertyResult], or `null` if at the root.
  */
-fun findContainingProperty(kClass: KtClassOrObject, project: Project): Pair<String, KtClassOrObject>? {
+fun findContainingProperty(kClass: KtClassOrObject, project: Project): ContainingPropertyResult? {
     if (kClass.fqName == null) return null
     for (ref in ReferencesSearch.search(kClass, GlobalSearchScope.projectScope(project)).findAll()) {
         val prop = PsiTreeUtil.getParentOfType(ref.element, KtProperty::class.java) ?: continue
@@ -83,7 +93,7 @@ fun findContainingProperty(kClass: KtClassOrObject, project: Project): Pair<Stri
         val parentFqName = parentClass.fqName?.asString() ?: continue
         if (!parentFqName.startsWith(BASE_CONFIG_PKG)) continue
         if (prop.parent !is KtClassBody) continue
-        return Pair(prop.name ?: continue, parentClass)
+        return ContainingPropertyResult(prop.name ?: continue, parentClass, prop)
     }
     return null
 }
@@ -128,7 +138,7 @@ fun resolveLocalValText(ref: KtNameReferenceExpression): String? {
 
 /**
  * Finds a property by name in [kClass] or any of its supertypes within the config package.
- * Returns Pair(property, isInherited) — isInherited=true means it lives in a supertype.
+ * Returns Pair(property, isInherited) - isInherited=true means it lives in a supertype.
  */
 fun findPropertyInHierarchy(kClass: KtClassOrObject, name: String, project: Project): Pair<KtProperty, Boolean>? {
     val direct = kClass.declarations.filterIsInstance<KtProperty>().firstOrNull { it.name == name }

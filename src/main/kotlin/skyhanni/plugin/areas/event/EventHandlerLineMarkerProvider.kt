@@ -21,7 +21,7 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
  *  1. An inspection that highlighted matching function names with a quick fix
  *  2. A Ctrl+Shift+Click EditorMouseListener for navigation
  *
- * A LineMarkerProvider is the correct IntelliJ idiom for this — it adds a
+ * A LineMarkerProvider is the correct IntelliJ idiom for this - it adds a
  * gutter icon that is clickable and shows a tooltip, without needing any
  * special key combo or an inspection highlight the user has to dismiss.
  *
@@ -61,9 +61,9 @@ class EventHandlerLineMarkerProvider : LineMarkerProvider {
     /**
      * Resolves the event class for a function using three strategies in order:
      *
-     * 1. @HandleEvent(eventType = SomeEvent::class) — explicit class reference in annotation
-     * 2. @HandleEvent fun onX(event: SomeEvent) — single SkyHanniEvent parameter
-     * 3. @PrimaryFunction("onX") on SomeEvent — function name matches primary name map
+     * 1. @HandleEvent(eventType = SomeEvent::class) - explicit class reference in annotation
+     * 2. @HandleEvent fun onX(event: SomeEvent) - single SkyHanniEvent parameter
+     * 3. @PrimaryFunction("onX") on SomeEvent - function name matches primary name map
      */
     private fun resolveEventClass(
         function: KtNamedFunction,

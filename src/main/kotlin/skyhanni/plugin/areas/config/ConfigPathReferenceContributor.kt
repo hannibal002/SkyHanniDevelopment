@@ -91,6 +91,6 @@ private class ConfigPathReference(
             .findClass(fqName, GlobalSearchScope.projectScope(element.project))
             ?.navigationElement as? KtClassOrObject
 
-    // Suppress rename refactoring — this is a config path, not a symbol reference
+    // Suppress rename refactoring - this is a config path, not a symbol reference
     override fun handleElementRename(newElementName: String) = element
 }

@@ -28,13 +28,8 @@
                                               nameKey="inlay.hints.event.primaryfunction.name"
                                               bundle="messages.SkyHanniBundle"/>
 
-        <codeInsight.declarativeInlayProvider language="kotlin"
-                                              implementationClass="skyhanni.plugin.areas.config.ConfigPathInlayHintsProvider"
-                                              isEnabledByDefault="true"
-                                              group="OTHER_GROUP"
-                                              providerId="skyhanni.config.path.hint"
-                                              nameKey="inlay.hints.config.path.name"
-                                              bundle="messages.SkyHanniBundle"/>
+        <codeInsight.inlayProvider language="kotlin"
+                                   implementationClass="skyhanni.plugin.areas.config.ConfigPathInlayHintsProvider"/>
 
         <codeInsight.lineMarkerProvider
                 language="kotlin"

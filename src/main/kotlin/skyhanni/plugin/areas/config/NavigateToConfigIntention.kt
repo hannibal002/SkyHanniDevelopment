@@ -66,19 +66,19 @@ class NavigateToConfigIntention :
                 return
             }
 
-            // Inherited property — navigate to the class we were traversing, not the supertype
+            // Inherited property - navigate to the class we were traversing, not the supertype
             if (isInherited) {
                 (current.navigationElement as? NavigatablePsiElement)?.navigate(true)
                 return
             }
 
-            // Last segment — navigate directly to the property
+            // Last segment - navigate directly to the property
             if (i == segments.lastIndex) {
                 (prop.navigationElement as? NavigatablePsiElement)?.navigate(true)
                 return
             }
 
-            // Second-to-last and it's a Map — navigate to the map property itself
+            // Second-to-last and it's a Map - navigate to the map property itself
             val typeText = prop.typeReference?.text.orEmpty()
             if (i == segments.lastIndex - 1 &&
                 (typeText.startsWith("MutableMap") || typeText.startsWith("Map"))
