@@ -1,4 +1,4 @@
-package skyhanni.plugin.areas.event
+package skyhanni.plugin.areas.event.primary
 
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
@@ -8,10 +8,14 @@ import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.util.InheritanceUtil
 import org.jetbrains.kotlin.idea.codeinsight.api.classic.inspections.AbstractKotlinInspection
 import org.jetbrains.kotlin.psi.KtClassLiteralExpression
+import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtVisitorVoid
 import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
+import skyhanni.plugin.areas.event.HANDLE_EVENT_ANNOTATION
+import skyhanni.plugin.areas.event.PRIMARY_FUNCTION_ANNOTATION
+import skyhanni.plugin.areas.event.SKYHANNI_EVENT_FQN
 
 /**
  * Warns when a @HandleEvent function specifies an explicit eventType but the function name
@@ -56,7 +60,7 @@ class MismatchedPrimaryFunctionInspection : AbstractKotlinInspection() {
                 .getClassesByName(explicitClassName, scope)
                 .firstOrNull { InheritanceUtil.isInheritor(it, SKYHANNI_EVENT_FQN) } ?: return
 
-            val ktClass = psiClass.navigationElement as? org.jetbrains.kotlin.psi.KtClassOrObject ?: return
+            val ktClass = psiClass.navigationElement as? KtClassOrObject ?: return
             val primaryFunctionAnnotation = ktClass.annotationEntries
                 .firstOrNull { it.shortName?.asString() == PRIMARY_FUNCTION_ANNOTATION } ?: return
             val expectedName = primaryFunctionAnnotation.valueArguments.firstOrNull()

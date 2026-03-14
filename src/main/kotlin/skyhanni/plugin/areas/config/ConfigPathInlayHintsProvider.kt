@@ -136,14 +136,15 @@ private class SegmentPresentation(
     private var docTimer: Timer? = null
 
     override val width: Int get() = fontMetrics.stringWidth(label)
-    override val height: Int get() = fontMetrics.ascent + fontMetrics.descent
+    override val height: Int get() = editor.lineHeight
 
     override fun paint(g: Graphics2D, attributes: TextAttributes) {
-        val fm = g.getFontMetrics(font)
+        val fm = fontMetrics
         g.font = font
         g.color = if (hovered && target != null) HINT_HOVER_COLOR else baseColor
-        // Use fm.ascent so text baseline aligns with the editor text baseline
-        g.drawString(label, 0, fm.ascent)
+        // Center text vertically within the line box so the baseline aligns with the editor text.
+        // (0,0) is the top-left of our allocated area; editor.lineHeight is the full row height.
+        g.drawString(label, 0, (height - fm.height) / 2 + fm.ascent)
     }
 
     override fun mouseClicked(event: MouseEvent, translated: Point) {
@@ -179,7 +180,9 @@ private class SegmentPresentation(
             psiDocumentationTargets(target!!, null).firstOrNull()
         }).finishOnUiThread(com.intellij.openapi.application.ModalityState.defaultModalityState()) { docTarget ->
             if (docTarget != null && hovered) {
-                DocumentationManagementHelper.getInstance(project).showQuickDoc(editor, docTarget)
+                // Pass null explicitly to avoid the Kotlin $default stub, whose signature
+                // differs between the compile-time and runtime API versions.
+                DocumentationManagementHelper.getInstance(project).showQuickDoc(editor, docTarget, null)
             }
         }.submit(com.intellij.util.concurrency.AppExecutorUtil.getAppExecutorService())
     }

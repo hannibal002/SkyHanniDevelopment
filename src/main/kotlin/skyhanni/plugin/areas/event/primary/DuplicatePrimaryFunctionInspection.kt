@@ -1,4 +1,4 @@
-package skyhanni.plugin.areas.event
+package skyhanni.plugin.areas.event.primary
 
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
@@ -13,6 +13,8 @@ import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtVisitorVoid
+import skyhanni.plugin.areas.event.PRIMARY_FUNCTION_ANNOTATION
+import skyhanni.plugin.areas.event.SKYHANNI_EVENT_FQN
 
 /**
  * Warns when two or more SkyHanniEvent subclasses declare the same @PrimaryFunction name.

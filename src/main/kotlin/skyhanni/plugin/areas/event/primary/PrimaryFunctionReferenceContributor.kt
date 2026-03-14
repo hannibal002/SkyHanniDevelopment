@@ -1,4 +1,4 @@
-package skyhanni.plugin.areas.event
+package skyhanni.plugin.areas.event.primary
 
 import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.PlatformPatterns
@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
+import skyhanni.plugin.areas.event.PRIMARY_FUNCTION_ANNOTATION
 
 /**
  * Makes the string literal inside @PrimaryFunction("onTick") a multi-target reference.

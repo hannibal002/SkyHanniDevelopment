@@ -66,7 +66,7 @@
                 shortName="MissingPrimaryFunction"
                 enabledByDefault="true"
                 level="WEAK WARNING"
-                implementationClass="skyhanni.plugin.areas.event.MissingPrimaryFunctionInspection"/>
+                implementationClass="skyhanni.plugin.areas.event.primary.MissingPrimaryFunctionInspection"/>
 
         <localInspection
                 language="kotlin"
@@ -75,7 +75,7 @@
                 shortName="MismatchedPrimaryFunctionName"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="skyhanni.plugin.areas.event.MismatchedPrimaryFunctionInspection"/>
+                implementationClass="skyhanni.plugin.areas.event.primary.MismatchedPrimaryFunctionInspection"/>
 
         <localInspection
                 language="kotlin"
@@ -84,7 +84,7 @@
                 shortName="DuplicatePrimaryFunction"
                 enabledByDefault="true"
                 level="WARNING"
-                implementationClass="skyhanni.plugin.areas.event.DuplicatePrimaryFunctionInspection"/>
+                implementationClass="skyhanni.plugin.areas.event.primary.DuplicatePrimaryFunctionInspection"/>
 
         <localInspection
                 language="kotlin"
@@ -111,7 +111,7 @@
 
         <psi.referenceContributor
                 language="kotlin"
-                implementation="skyhanni.plugin.areas.event.PrimaryFunctionReferenceContributor"/>
+                implementation="skyhanni.plugin.areas.event.primary.PrimaryFunctionReferenceContributor"/>
 
         <!-- Completion -->
         <completion.contributor

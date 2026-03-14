@@ -1,4 +1,4 @@
-package skyhanni.plugin.areas.event
+package skyhanni.plugin.areas.event.primary
 
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
@@ -16,6 +16,9 @@ import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtVisitorVoid
+import skyhanni.plugin.areas.event.PRIMARY_FUNCTION_ANNOTATION
+import skyhanni.plugin.areas.event.SKYHANNI_EVENT_FQN
+import skyhanni.plugin.areas.event.buildPrimaryNameMap
 
 /**
  * Warns on concrete (non-abstract) SkyHanniEvent subclasses that have no @PrimaryFunction annotation.
@@ -48,9 +51,12 @@ class MissingPrimaryFunctionInspection : AbstractKotlinInspection() {
                 .findClass(fqName, GlobalSearchScope.allScope(project)) ?: return
             if (!InheritanceUtil.isInheritor(psiClass, SKYHANNI_EVENT_FQN)) return
 
-            // Prefer the enclosing class name for nested events (e.g. SomeEvent.Allow → onSomeEvent)
-            val enclosing = PsiTreeUtil.getParentOfType(klass, KtClassOrObject::class.java)
-            val baseName = (enclosing?.name ?: klass.name) ?: return
+            // If the class's own name ends with "Event", derive from it directly (e.g. SlotClickEvent → onSlotClick).
+            // Only fall back to the enclosing class for inner non-event classes like Allow/Cancel/Pre.
+            val className = klass.name ?: return
+            val baseName = if (className.endsWith("Event")) className
+            else PsiTreeUtil.getParentOfType(klass, KtClassOrObject::class.java)?.name ?: className
+
             val stripped = if (baseName.endsWith("Event")) baseName.dropLast(5) else baseName
             val candidate = "on$stripped"
 
@@ -71,7 +77,7 @@ class MissingPrimaryFunctionInspection : AbstractKotlinInspection() {
 
         override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
             val klass = descriptor.psiElement.parent as? KtClass ?: return
-            val annotation = KtPsiFactory(project).createAnnotationEntry("@$PRIMARY_FUNCTION_ANNOTATION(\"$name\")")
+            val annotation = KtPsiFactory(project).createAnnotationEntry("@${PRIMARY_FUNCTION_ANNOTATION}(\"$name\")")
             klass.addAnnotationEntry(annotation)
         }
     }
