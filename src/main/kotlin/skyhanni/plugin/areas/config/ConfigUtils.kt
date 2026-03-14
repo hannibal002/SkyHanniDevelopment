@@ -30,7 +30,7 @@ const val PROPERTY_FQN = "io.github.notenoughupdates.moulconfig.observer.Propert
 
 const val NOTIFICATION_GROUP = "SkyHanni Plugin"
 
-/** FQNs that are considered config roots — traversal stops when one is reached. */
+/** FQNs that are considered config roots - traversal stops when one is reached. */
 val ROOT_CONFIG_FQNS = setOf(BASE_CONFIG_CLASS, PROFILE_STORAGE_CLASS, PLAYER_STORAGE_CLASS)
 
 fun KtClassOrObject.isAbstract() = hasModifier(KtTokens.ABSTRACT_KEYWORD)
@@ -77,6 +77,21 @@ fun computeConfigPathSegments(prop: KtProperty): List<ConfigPathSegment>? {
 }
 
 /**
+ * Computes the path segments for a config class itself - i.e. the path of the property
+ * in the parent class that holds an instance of [kClass]. Used to label `class` declarations.
+ *
+ * Returns `null` for abstract classes, root classes, or classes with no config parent.
+ */
+fun computeClassConfigPathSegments(kClass: KtClassOrObject): List<ConfigPathSegment>? {
+    if (kClass.isAbstract()) return null
+    val fqName = kClass.fqName?.asString() ?: return null
+    if (!fqName.startsWith(BASE_CONFIG_PKG)) return null
+    if (fqName in ROOT_CONFIG_FQNS) return null
+    val result = findContainingProperty(kClass, kClass.project) ?: return null
+    return computeConfigPathSegments(result.property)
+}
+
+/**
  * Convenience over [computeConfigPathSegments] returning the dotted path string,
  * or `null` if the path cannot be computed.
  */
@@ -85,7 +100,7 @@ fun computeConfigPath(prop: KtProperty): String? =
 
 /**
  * Given a config class, finds the property in another class whose type
- * references this class — i.e. walks one level up the config tree.
+ * references this class - i.e. walks one level up the config tree.
  *
  * Searches directly on the [KtClassOrObject] so that Kotlin-indexed type
  * references (which are not tied to the Java light class) are found correctly.
@@ -145,7 +160,7 @@ fun resolveLocalValText(ref: KtNameReferenceExpression): String? {
 
 /**
  * Finds a property by name in [kClass] or any of its supertypes within the config package.
- * Returns Pair(property, isInherited) — isInherited=true means it lives in a supertype.
+ * Returns Pair(property, isInherited) - isInherited=true means it lives in a supertype.
  */
 fun findPropertyInHierarchy(kClass: KtClassOrObject, name: String, project: Project): Pair<KtProperty, Boolean>? {
     val direct = kClass.declarations.filterIsInstance<KtProperty>().firstOrNull { it.name == name }
