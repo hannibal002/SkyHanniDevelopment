@@ -21,7 +21,6 @@ import org.jetbrains.kotlin.psi.psiUtil.isPublic
 
 private const val EVENT_TYPE_PARAM = "eventType"
 private const val EVENT_TYPES_PARAM = "eventTypes"
-private const val HANDLE_EVENT_FQN = "at.hannibal2.skyhanni.api.event.HandleEvent"
 private val eventParams = setOf(EVENT_TYPE_PARAM, EVENT_TYPES_PARAM)
 
 class HandleEventInspection : AbstractKotlinInspection() {

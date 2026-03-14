@@ -13,6 +13,7 @@ import com.intellij.codeInsight.hints.presentation.InlayPresentation
 import com.intellij.lang.documentation.ide.impl.DocumentationManagementHelper
 import com.intellij.lang.documentation.psi.psiDocumentationTargets
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.colors.EditorFontType
 import com.intellij.openapi.editor.markup.TextAttributes
@@ -32,33 +33,29 @@ import java.awt.Graphics2D
 import java.awt.Point
 import java.awt.Rectangle
 import java.awt.event.MouseEvent
+import java.util.concurrent.Callable
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.SwingUtilities
 import javax.swing.Timer
 
-// Intermediate/link segments
 private val HINT_COLOR = JBColor(Gray._130, Gray._150)
-
-// Last segment - non-clickable, slightly darker to distinguish from links
 private val HINT_LAST_COLOR = JBColor(Gray._100, Gray._120)
-
-// Hover state for clickable segments
 private val HINT_HOVER_COLOR = JBColor(Color(88, 157, 246), Color(88, 157, 246))
 
 /**
- * Renders a boxed, clickable config path hint for every non-abstract `@ConfigOption`
- * or `@Category` property (end-of-line), and above every config class declaration (block).
+ * Renders a boxed, clickable config path hint for every non-abstract @ConfigOption
+ * or @Category property (end-of-line), and above every config class declaration (block).
  *
  * - Each dot-separated segment is a clickable link navigating to its definition.
  * - The last segment (the property itself) is non-clickable and slightly darker.
  * - Hovering a link segment for 400 ms opens the standard documentation popup.
  * - The whole hint is rendered in a rounded background box matching native inlay style.
  *
- * Doc popup path (both are `@Internal` by package but have no stable alternative):
+ * Doc popup path (both are @Internal by package but have no stable alternative):
  * [psiDocumentationTargets] -> [DocumentationManagementHelper.showQuickDoc].
  *
- * **plugin.xml**: register under `com.intellij.codeInsight.hints.inlayProvider`.
+ * plugin.xml: register under com.intellij.codeInsight.hints.inlayProvider.
  */
 @Suppress("UnstableApiUsage")
 class ConfigPathInlayHintsProvider : InlayHintsProvider<NoSettings> {
@@ -102,11 +99,12 @@ class ConfigPathInlayHintsProvider : InlayHintsProvider<NoSettings> {
             val segments = computeClassConfigPathSegments(klass) ?: return
             val presentation = buildPresentation(segments, editor, lastIsLink = true)
             val line = editor.document.getLineNumber(klass.textRange.startOffset)
-            sink.addBlockElement(editor.document.getLineStartOffset(line),
+            sink.addBlockElement(
+                editor.document.getLineStartOffset(line),
                 relatesToPrecedingText = false,
                 showAbove = true,
                 priority = 0,
-                presentation = presentation
+                presentation = presentation,
             )
         }
 
@@ -123,7 +121,9 @@ class ConfigPathInlayHintsProvider : InlayHintsProvider<NoSettings> {
                 val part = SegmentPresentation(segment.name, navigable, editor, color)
                 if (!isLast) listOf(part, dot) else listOf(part)
             }
-            return factory.roundWithBackground(factory.seq(*parts.toTypedArray()))
+            // Gap provides left padding between the code text and the hint box
+            val gap = SegmentPresentation(" ", null, editor, HINT_COLOR)
+            return factory.seq(gap, factory.roundWithBackground(factory.seq(*parts.toTypedArray())))
         }
     }
 }
@@ -148,7 +148,8 @@ private class SegmentPresentation(
         val fm = g.getFontMetrics(font)
         g.font = font
         g.color = if (hovered && target != null) HINT_HOVER_COLOR else baseColor
-        g.drawString(label, 0, (height - fm.height) / 2 + fm.ascent)
+        // Use fm.ascent so text baseline aligns with the editor text baseline
+        g.drawString(label, 0, fm.ascent)
     }
 
     override fun mouseClicked(event: MouseEvent, translated: Point) {
@@ -174,14 +175,19 @@ private class SegmentPresentation(
 
     private fun showDocPopup() {
         val project = editor.project ?: return
-        ApplicationManager.getApplication().invokeLater {
-            if (!hovered) return@invokeLater
-            // psiDocumentationTargets and DocumentationManagementHelper are both @Internal by
-            // package annotation - there is no stable public API to trigger the doc popup for
-            // an arbitrary PsiElement from outside the editor caret position.
-            val docTarget = psiDocumentationTargets(target!!, null).firstOrNull() ?: return@invokeLater
-            DocumentationManagementHelper.getInstance(project).showQuickDoc(editor, docTarget)
-        }
+        // Fetch the documentation target on a pooled thread (requires read access),
+        // then show the popup back on the EDT.
+        // psiDocumentationTargets and DocumentationManagementHelper are both @Internal by
+        // package annotation - there is no stable public API to trigger the doc popup for
+        // an arbitrary PsiElement from outside the editor caret position.
+        ReadAction.nonBlocking(Callable {
+            if (!hovered) return@Callable null
+            psiDocumentationTargets(target!!, null).firstOrNull()
+        }).finishOnUiThread(com.intellij.openapi.application.ModalityState.defaultModalityState()) { docTarget ->
+            if (docTarget != null && hovered) {
+                DocumentationManagementHelper.getInstance(project).showQuickDoc(editor, docTarget)
+            }
+        }.submit(com.intellij.util.concurrency.AppExecutorUtil.getAppExecutorService())
     }
 
     override fun toString() = label
