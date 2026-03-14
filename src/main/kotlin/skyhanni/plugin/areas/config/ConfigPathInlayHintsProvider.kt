@@ -10,18 +10,24 @@ import com.intellij.codeInsight.hints.NoSettings
 import com.intellij.codeInsight.hints.SettingsKey
 import com.intellij.codeInsight.hints.presentation.BasePresentation
 import com.intellij.codeInsight.hints.presentation.InlayPresentation
-import com.intellij.lang.documentation.ide.impl.DocumentationManagementHelper
+import com.intellij.lang.documentation.ide.impl.DocumentationManager
 import com.intellij.lang.documentation.psi.psiDocumentationTargets
+import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.colors.EditorFontType
 import com.intellij.openapi.editor.markup.TextAttributes
+import com.intellij.platform.backend.documentation.DocumentationTarget
+import com.intellij.platform.ide.documentation.DOCUMENTATION_TARGETS
 import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.ui.Gray
 import com.intellij.ui.JBColor
+import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
@@ -32,7 +38,6 @@ import java.awt.Graphics2D
 import java.awt.Point
 import java.awt.Rectangle
 import java.awt.event.MouseEvent
-import java.util.concurrent.Callable
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.SwingUtilities
@@ -48,11 +53,7 @@ private val HINT_HOVER_COLOR = JBColor(Color(88, 157, 246), Color(88, 157, 246))
  *
  * - Each dot-separated segment is a clickable link navigating to its definition.
  * - The last segment (the property itself) is non-clickable and slightly darker.
- * - Hovering a link segment for 400 ms opens the standard documentation popup.
- * - The whole hint is rendered in a rounded background box matching native inlay style.
- *
- * Doc popup path (both are @Internal by package but have no stable alternative):
- * [psiDocumentationTargets] -> [DocumentationManagementHelper.showQuickDoc].
+ * - Hovering a link segment for 400 ms opens the standard documentation popup via [DocumentationManager].
  *
  * plugin.xml: register under com.intellij.codeInsight.hints.inlayProvider.
  */
@@ -136,15 +137,12 @@ private class SegmentPresentation(
     private var docTimer: Timer? = null
 
     override val width: Int get() = fontMetrics.stringWidth(label)
-    override val height: Int get() = editor.lineHeight
+    override val height: Int get() = fontMetrics.height
 
     override fun paint(g: Graphics2D, attributes: TextAttributes) {
-        val fm = fontMetrics
         g.font = font
         g.color = if (hovered && target != null) HINT_HOVER_COLOR else baseColor
-        // Center text vertically within the line box so the baseline aligns with the editor text.
-        // (0,0) is the top-left of our allocated area; editor.lineHeight is the full row height.
-        g.drawString(label, 0, (height - fm.height) / 2 + fm.ascent)
+        g.drawString(label, 0, fontMetrics.ascent)
     }
 
     override fun mouseClicked(event: MouseEvent, translated: Point) {
@@ -170,21 +168,35 @@ private class SegmentPresentation(
 
     private fun showDocPopup() {
         val project = editor.project ?: return
-        // Fetch the documentation target on a pooled thread (requires read access),
-        // then show the popup back on the EDT.
-        // psiDocumentationTargets and DocumentationManagementHelper are both @Internal by
-        // package annotation - there is no stable public API to trigger the doc popup for
-        // an arbitrary PsiElement from outside the editor caret position.
-        ReadAction.nonBlocking(Callable {
-            if (!hovered) return@Callable null
+        ReadAction.nonBlocking<DocumentationTarget?> {
+            if (!hovered) return@nonBlocking null
             psiDocumentationTargets(target!!, null).firstOrNull()
-        }).finishOnUiThread(com.intellij.openapi.application.ModalityState.defaultModalityState()) { docTarget ->
-            if (docTarget != null && hovered) {
-                // Pass null explicitly to avoid the Kotlin $default stub, whose signature
-                // differs between the compile-time and runtime API versions.
-                DocumentationManagementHelper.getInstance(project).showQuickDoc(editor, docTarget, null)
+        }.finishOnUiThread(ModalityState.defaultModalityState()) { docTarget ->
+            if (docTarget == null || !hovered) return@finishOnUiThread
+            val context = DataContext { key ->
+                when (key) {
+                    CommonDataKeys.EDITOR.name -> editor
+                    DOCUMENTATION_TARGETS.name -> listOf(docTarget)
+                    else -> null
+                }
             }
-        }.submit(com.intellij.util.concurrency.AppExecutorUtil.getAppExecutorService())
+            val manager = DocumentationManager.getInstance(project)
+            val candidates = manager::class.java.declaredMethods
+                .filter { it.name == "actionPerformed" }
+                .onEach { it.isAccessible = true }
+
+            val method = candidates
+                .firstOrNull { it.parameterTypes.firstOrNull() == DataContext::class.java }
+                ?: error(
+                    "No actionPerformed(DataContext, ...) overload found. " +
+                            "Available overloads:\n" + candidates.joinToString("\n") { m ->
+                        "  ${m.name}(${m.parameterTypes.joinToString { it.simpleName }})"
+                    }
+                )
+
+            val extraArgs = arrayOfNulls<Any?>(method.parameterCount - 1)
+            method.invoke(manager, context, *extraArgs)
+        }.submit(AppExecutorUtil.getAppExecutorService())
     }
 
     override fun toString() = label
