@@ -1,6 +1,7 @@
 package skyhanni.plugin.areas.config
 
 import com.intellij.openapi.project.Project
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
@@ -128,25 +129,32 @@ fun computeConfigPath(prop: KtProperty): String? =
     computeConfigPathSegments(prop)?.joinToString(".") { it.name }
 
 /**
- * Given a config class, finds the property in another class whose type
- * references this class - i.e. walks one level up the config tree.
+ * Given a config class, finds the property in another class whose type references this class -
+ * i.e. walks one level up the config tree.
  *
- * Searches directly on the [KtClassOrObject] so that Kotlin-indexed type
- * references (which are not tied to the Java light class) are found correctly.
+ * First searches via the Kotlin PSI element directly (catches explicit type references).
+ * Falls back to searching via the Java light class, which reliably catches constructor-call
+ * usages where no explicit type annotation is present (e.g. `val x = SomeConfig()`).
  *
  * Returns a [ContainingPropertyResult], or `null` if at the root.
  */
 fun findContainingProperty(kClass: KtClassOrObject, project: Project): ContainingPropertyResult? {
-    if (kClass.fqName == null) return null
-    for (ref in ReferencesSearch.search(kClass, GlobalSearchScope.projectScope(project)).findAll()) {
-        val prop = PsiTreeUtil.getParentOfType(ref.element, KtProperty::class.java) ?: continue
-        val parentClass = PsiTreeUtil.getParentOfType(prop, KtClassOrObject::class.java) ?: continue
-        val parentFqName = parentClass.fqName?.asString() ?: continue
-        if (!parentFqName.startsWith(BASE_CONFIG_PKG)) continue
-        if (prop.parent !is KtClassBody) continue
-        return ContainingPropertyResult(prop.name ?: continue, parentClass, prop)
+    val fqName = kClass.fqName?.asString() ?: return null
+    val scope = GlobalSearchScope.projectScope(project)
+
+    fun searchRefs(target: PsiElement): ContainingPropertyResult? {
+        for (ref in ReferencesSearch.search(target, scope).findAll()) {
+            val prop = PsiTreeUtil.getParentOfType(ref.element, KtProperty::class.java) ?: continue
+            val parentClass = PsiTreeUtil.getParentOfType(prop, KtClassOrObject::class.java) ?: continue
+            if (parentClass.fqName?.asString()?.startsWith(BASE_CONFIG_PKG) != true) continue
+            if (prop.parent !is KtClassBody) continue
+            return ContainingPropertyResult(prop.name ?: continue, parentClass, prop)
+        }
+        return null
     }
-    return null
+
+    return searchRefs(kClass)
+        ?: JavaPsiFacade.getInstance(project).findClass(fqName, scope)?.let { searchRefs(it) }
 }
 
 /**

@@ -75,6 +75,6 @@ class DuplicatePrimaryFunctionInspection : AbstractKotlinInspection() {
                     ?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
                 if (primaryName != targetName) return@mapNotNull null
                 ktClass.fqName?.asString()
-            }
+            }.distinct()
     }
 }

@@ -12,7 +12,6 @@ import com.intellij.codeInsight.hints.presentation.BasePresentation
 import com.intellij.codeInsight.hints.presentation.InlayPresentation
 import com.intellij.lang.documentation.ide.impl.DocumentationManagementHelper
 import com.intellij.lang.documentation.psi.psiDocumentationTargets
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.colors.EditorFontType
@@ -45,7 +44,7 @@ private val HINT_HOVER_COLOR = JBColor(Color(88, 157, 246), Color(88, 157, 246))
 
 /**
  * Renders a boxed, clickable config path hint for every non-abstract @ConfigOption
- * or @Category property (end-of-line), and above every config class declaration (block).
+ * or @Category property (end-of-line), and beside every config class declaration (also end-of-line).
  *
  * - Each dot-separated segment is a clickable link navigating to its definition.
  * - The last segment (the property itself) is non-clickable and slightly darker.
@@ -98,14 +97,9 @@ class ConfigPathInlayHintsProvider : InlayHintsProvider<NoSettings> {
         private fun collectClass(klass: KtClassOrObject, editor: Editor, sink: InlayHintsSink) {
             val segments = computeClassConfigPathSegments(klass) ?: return
             val presentation = buildPresentation(segments, editor, lastIsLink = true)
-            val line = editor.document.getLineNumber(klass.textRange.startOffset)
-            sink.addBlockElement(
-                editor.document.getLineStartOffset(line),
-                relatesToPrecedingText = false,
-                showAbove = true,
-                priority = 0,
-                presentation = presentation,
-            )
+            val nameOffset = klass.nameIdentifier?.textRange?.startOffset ?: klass.textRange.startOffset
+            val line = editor.document.getLineNumber(nameOffset)
+            sink.addInlineElement(editor.document.getLineEndOffset(line), true, presentation, false)
         }
 
         private fun buildPresentation(
@@ -142,7 +136,7 @@ private class SegmentPresentation(
     private var docTimer: Timer? = null
 
     override val width: Int get() = fontMetrics.stringWidth(label)
-    override val height: Int get() = editor.lineHeight
+    override val height: Int get() = fontMetrics.ascent + fontMetrics.descent
 
     override fun paint(g: Graphics2D, attributes: TextAttributes) {
         val fm = g.getFontMetrics(font)
