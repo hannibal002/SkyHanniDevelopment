@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 
 const val CONFIG_OPTION_ANNOTATION = "ConfigOption"
 const val CATEGORY_ANNOTATION = "Category"
+const val CONFIG_LINK_ANNOTATION = "ConfigLink"
 
 const val BASE_CONFIG_PKG = "at.hannibal2.skyhanni.config"
 const val BASE_CONFIG_CLASS = "at.hannibal2.skyhanni.config.SkyHanniConfig"
@@ -47,10 +48,10 @@ val CONFIG_EVENT_PATH_FUNS = setOf("move", "transform", "add", "remove")
 
 fun KtClassOrObject.isAbstract() = hasModifier(KtTokens.ABSTRACT_KEYWORD)
 
-/** True if this property carries either `@ConfigOption` or `@Category`. */
+/** True if this property carries either `@ConfigOption`, `@Category`, or `@ConfigLink` */
 fun KtProperty.isConfigAnnotated() = annotationEntries.any {
     val name = it.shortName?.asString()
-    name == CONFIG_OPTION_ANNOTATION || name == CATEGORY_ANNOTATION
+    name == CONFIG_OPTION_ANNOTATION || name == CATEGORY_ANNOTATION || name == CONFIG_LINK_ANNOTATION
 }
 
 /**

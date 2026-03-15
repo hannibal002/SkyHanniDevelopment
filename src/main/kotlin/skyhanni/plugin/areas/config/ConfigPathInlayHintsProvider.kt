@@ -49,8 +49,8 @@ private val HINT_LAST_COLOR = JBColor(Gray._100, Gray._120)
 private val HINT_HOVER_COLOR = JBColor(Color(88, 157, 246), Color(88, 157, 246))
 
 /**
- * Renders a boxed, clickable config path hint for every non-abstract @ConfigOption
- * or @Category property (end-of-line), and beside every config class declaration (also end-of-line).
+ * Renders a boxed, clickable config path hint for every non-abstract @ConfigOption, @ConfigLink,
+ * or @Category property, and beside every config class declaration.
  *
  * - Each dot-separated segment is a clickable link navigating to its definition.
  * - The last segment (the property itself) is non-clickable and slightly darker.
