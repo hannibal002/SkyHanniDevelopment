@@ -1,10 +1,12 @@
-@ConfigOption(name = "My Option", desc = "")
-var myOption: Boolean = false
+class MyFeatureConfig {
+    @ConfigOption(name = "My Option", desc = "")
+    var myOption: Boolean = false
 
-@SkyHanniModule
-companion object {
-    @HandleEvent
-    fun onConfigFix(event: ConfigUpdaterMigrator.ConfigFixEvent) {
-        event.move(127, "some.path.myOption", "some.path.myOption")
+    @SkyHanniModule
+    companion object {
+        @HandleEvent
+        fun onConfigFix(event: ConfigUpdaterMigrator.ConfigFixEvent) {
+            event.move(127, "myFeature.myOption", "myFeature.myOption")
+        }
     }
 }

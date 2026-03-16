@@ -1,11 +1,17 @@
 package skyhanni.plugin.areas.event.primary
 
+import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.util.InheritanceUtil
+import com.intellij.refactoring.rename.RenameProcessor
+import com.intellij.codeInspection.LocalQuickFix
+import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.openapi.application.ApplicationManager
 import org.jetbrains.kotlin.idea.codeinsight.api.classic.inspections.AbstractKotlinInspection
 import org.jetbrains.kotlin.psi.KtClassLiteralExpression
 import org.jetbrains.kotlin.psi.KtClassOrObject
@@ -16,17 +22,9 @@ import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
 import skyhanni.plugin.areas.event.HANDLE_EVENT_ANNOTATION
 import skyhanni.plugin.areas.event.PRIMARY_FUNCTION_ANNOTATION
 import skyhanni.plugin.areas.event.SKYHANNI_EVENT_FQN
+import skyhanni.plugin.areas.event.resolveEventClass
 
-/**
- * Warns when a @HandleEvent function specifies an explicit eventType but the function name
- * does not match the @PrimaryFunction name declared on that event class.
- *
- * For example, if SomeEvent has @PrimaryFunction("onSomething"), then:
- *   @HandleEvent(eventType = SomeEvent::class) fun onWrongName() -- is warned
- *   @HandleEvent(eventType = SomeEvent::class) fun onSomething() -- is fine
- *
- * Suppressable via @Suppress("MismatchedPrimaryFunctionName").
- */
+
 class MismatchedPrimaryFunctionInspection : AbstractKotlinInspection() {
 
     override fun getDisplayName() = "Handler function name does not match @PrimaryFunction for the event"
@@ -36,31 +34,19 @@ class MismatchedPrimaryFunctionInspection : AbstractKotlinInspection() {
 
     override fun buildVisitor(
         holder: ProblemsHolder,
-        isOnTheFly: Boolean
+        isOnTheFly: Boolean,
     ): PsiElementVisitor = object : KtVisitorVoid() {
         override fun visitNamedFunction(function: KtNamedFunction) {
             if (function.containingClassOrObject !is KtObjectDeclaration) return
             val functionName = function.name ?: return
 
-            val annotation = function.annotationEntries
-                .find { it.shortName?.asString() == HANDLE_EVENT_ANNOTATION } ?: return
+            val hasHandleEvent = function.annotationEntries
+                .any { it.shortName?.asString() == HANDLE_EVENT_ANNOTATION }
+            if (!hasHandleEvent) return
 
-            // Only check functions with explicit eventType - parameterless functions
-            // with no explicit type are handled by HandleEventInspection
-            val eventTypeArg = annotation.valueArguments.firstOrNull { arg ->
-                val name = arg.getArgumentName()?.asName?.asString()
-                name == "eventType" || name == "eventTypes" || name == null
-            } ?: return
-
-            val classLiteral = eventTypeArg.getArgumentExpression() as? KtClassLiteralExpression ?: return
-            val explicitClassName = classLiteral.receiverExpression?.text?.substringAfterLast('.') ?: return
-
-            val scope = GlobalSearchScope.allScope(function.project)
-            val psiClass = PsiShortNamesCache.getInstance(function.project)
-                .getClassesByName(explicitClassName, scope)
-                .firstOrNull { InheritanceUtil.isInheritor(it, SKYHANNI_EVENT_FQN) } ?: return
-
+            val psiClass = resolveEventClass(function, function.project) ?: return
             val ktClass = psiClass.navigationElement as? KtClassOrObject ?: return
+
             val primaryFunctionAnnotation = ktClass.annotationEntries
                 .firstOrNull { it.shortName?.asString() == PRIMARY_FUNCTION_ANNOTATION } ?: return
             val expectedName = primaryFunctionAnnotation.valueArguments.firstOrNull()
@@ -69,11 +55,41 @@ class MismatchedPrimaryFunctionInspection : AbstractKotlinInspection() {
 
             if (functionName == expectedName) return
 
+            val eventClassName = psiClass.name ?: "event"
             holder.registerProblem(
                 function.nameIdentifier ?: return,
-                "Handler name '$functionName' does not match @PrimaryFunction(\"$expectedName\") on $explicitClassName",
+                "Handler name '$functionName' does not match @PrimaryFunction(\"$expectedName\") on $eventClassName",
                 ProblemHighlightType.WARNING,
+                RenameToPrimaryFunctionFix(expectedName),
             )
+        }
+    }
+}
+
+/**
+ * Quick fix that delegates to IntelliJ's RenameProcessor, giving us full
+ * refactor behavior. conflict detection, find-usages, preview, etc.
+ */
+private class RenameToPrimaryFunctionFix(private val newName: String) : LocalQuickFix {
+
+    override fun getFamilyName() = "Rename to '$newName'"
+    override fun getName() = familyName
+
+    override fun generatePreview(project: Project, previewDescriptor: ProblemDescriptor): IntentionPreviewInfo =
+        IntentionPreviewInfo.EMPTY
+
+    // We need the full PSI element, so we cannot use the "safe" applyFix(Project, ProblemDescriptor)
+    // that only receives a project, we use the descriptor overload instead.
+    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+        val function = descriptor.psiElement.parent as? KtNamedFunction ?: return
+        ApplicationManager.getApplication().invokeLater {
+            RenameProcessor(
+                project,
+                function,
+                newName,
+                /* isSearchInComments = */ false,
+                /* isSearchTextOccurrences = */ false,
+            ).run()
         }
     }
 }

@@ -1,2 +1,4 @@
-@ConfigOption(name = "My Option", desc = "")
-var myOption: Boolean = false
+class MyFeatureConfig {
+    @ConfigOption(name = "My Option", desc = "")
+    var myOption: Boolean = false
+}
