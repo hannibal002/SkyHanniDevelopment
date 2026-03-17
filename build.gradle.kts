@@ -14,8 +14,10 @@ plugins {
     alias(libs.plugins.kover) // Gradle Kover Plugin
     alias(libs.plugins.detekt)
 
-    // Auto update dependencies with: ./gradlew versionCatalogUpdate
-    id("nl.littlerobots.version-catalog-update") version "0.8.4"
+    // Auto update lib versions
+    // Run with ./gradlew versionCatalogUpdate --no-configuration-cache
+    alias(libs.plugins.benManesVersions)
+    alias(libs.plugins.versionCatalogUpdate)
 }
 
 group = providers.gradleProperty("pluginGroup").get()
@@ -218,4 +220,8 @@ tasks.withType<DetektCreateBaselineTask>().configureEach {
     val isMainBaseline = (this.name == "detektBaselineMain")
     val outputFileName = if (isMainBaseline) "baseline-main" else "baseline"
     baseline.set(file(rootProject.layout.projectDirectory.file("detekt/$outputFileName.xml")))
+}
+
+versionCatalogUpdate {
+    sortByKey = false
 }
