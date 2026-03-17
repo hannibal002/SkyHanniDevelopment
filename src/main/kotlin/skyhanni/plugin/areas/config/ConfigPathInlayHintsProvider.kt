@@ -219,12 +219,13 @@ private class SegmentPresentation(
             )
             try {
                 val inlineCtxClass = Class.forName("com.intellij.lang.documentation.ide.impl.InlinePopupContext")
-                val inlineCtx = inlineCtxClass.getDeclaredConstructors().first()
+                val inlineCtx = inlineCtxClass.declaredConstructors.first()
                     .also { it.isAccessible = true }
                     .newInstance(project, editor, popupPoint)
                 val showDocumentation = manager::class.java.declaredMethods
                     .first { it.name == "showDocumentation" && it.parameterTypes.firstOrNull() == List::class.java }
                     .also { it.isAccessible = true }
+                @Suppress("SpreadOperator")
                 showDocumentation.invoke(
                     manager,
                     listOf(request),

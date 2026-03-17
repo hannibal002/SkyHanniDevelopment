@@ -13,6 +13,9 @@ plugins {
     alias(libs.plugins.qodana) // Gradle Qodana Plugin
     alias(libs.plugins.kover) // Gradle Kover Plugin
     alias(libs.plugins.detekt)
+
+    // Auto update dependencies with: ./gradlew versionCatalogUpdate
+    id("nl.littlerobots.version-catalog-update") version "0.8.4"
 }
 
 group = providers.gradleProperty("pluginGroup").get()
