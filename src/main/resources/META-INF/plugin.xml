@@ -144,6 +144,6 @@
 
         <lang.inspectionSuppressor
             language="kotlin"
-            implementationClass="skyhanni.plugin.areas.misc.SkyHanniSpellCheckSuppressor"/>
+            implementationClass="skyhanni.plugin.areas.misc.SkyHanniInspectionSuppressor"/>
     </extensions>
 </idea-plugin>

@@ -19,14 +19,16 @@ import org.jetbrains.kotlin.psi.KtValueArgument
 import org.jetbrains.kotlin.psi.KtValueArgumentList
 
 /**
- * Suppresses Grazie spell check warnings in contexts where arbitrary or non-English strings are
- * intentional: RepoPattern keys, command names and aliases (inside registerBrigadier /
- * registerComplex lambdas), group/groupOrNull arguments, strings containing Minecraft color codes,
- * and lines containing REGEX-TEST:.
+ * Suppresses IntelliJ inspection warnings in SkyHanni-specific contexts:
+ * - Spell check (Grazie): RepoPattern keys, command names and aliases (inside registerBrigadier /
+ *   registerComplex lambdas), group/groupOrNull arguments, strings containing Minecraft color codes,
+ *   and lines containing REGEX-TEST:.
+ * - RegExpRedundantEscape: regex strings passed to RepoPattern.pattern().
  */
-class SkyHanniSpellCheckSuppressor : InspectionSuppressor {
+class SkyHanniInspectionSuppressor : InspectionSuppressor {
 
     override fun isSuppressedFor(element: PsiElement, toolId: String): Boolean {
+        if (toolId == "RegExpRedundantEscape") return element.isInsideRepoPatternRegex()
         if (!toolId.contains("Spell", ignoreCase = true) && !toolId.contains("Grazie", ignoreCase = true)) return false
         if (element.isInsideRegexTestComment()) return true
         var current: PsiElement? = element
@@ -113,6 +115,21 @@ internal fun KtStringTemplateExpression.isGroupNameArg(): Boolean {
     val (_, index, calleeName) = resolveCallArg() ?: return false
     if (index != 0) return false
     return calleeName == "group" || calleeName == "groupOrNull"
+}
+
+internal fun KtStringTemplateExpression.isRepoPatternRegexArg(): Boolean {
+    val (_, index, calleeName) = resolveCallArg() ?: return false
+    if (calleeName != "pattern") return false
+    return index == 1
+}
+
+internal fun PsiElement.isInsideRepoPatternRegex(): Boolean {
+    var current: PsiElement? = this
+    while (current != null) {
+        if (current is KtStringTemplateExpression) return current.isRepoPatternRegexArg()
+        current = current.parent
+    }
+    return false
 }
 
 internal fun KtStringTemplateExpression.containsMinecraftColorCode(): Boolean = text.contains('§')

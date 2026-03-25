@@ -73,12 +73,13 @@ config class hierarchy.
 
 - **Regex101 line markers** — Gutter icons on regex pattern declarations open the pattern directly in [regex101.com](https://regex101.com)
   for testing.
-- **Spell check suppression** — Suppresses typo warnings in contexts where arbitrary or non-English strings are expected:
-    - `RepoPattern` keys (first argument to `group`, `exclusiveGroup`, `list`, and `pattern`)
-    - Command names and aliases inside `registerBrigadier`/`registerComplex`
-    - `group`/`groupOrNull` name arguments
-    - Strings containing Minecraft color codes (`§`)
-    - Regex test lines (lines marked with `REGEX-TEST:`)
+- **Inspection suppression** — Suppresses false-positive IntelliJ warnings in SkyHanni-specific contexts:
+    - *Spell check:* `RepoPattern` keys (first argument to `group`, `exclusiveGroup`, `list`, and `pattern`)
+    - *Spell check:* Command names and aliases inside `registerBrigadier`/`registerComplex`
+    - *Spell check:* `group`/`groupOrNull` name arguments
+    - *Spell check:* Strings containing Minecraft color codes (`§`)
+    - *Spell check:* Regex test lines (lines marked with `REGEX-TEST:`)
+    - *Redundant escape:* Regex strings in `RepoPattern.pattern()` calls (the `\/` escape is sometimes necessary by the regex test logic)
 
 ---
 
