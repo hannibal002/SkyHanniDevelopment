@@ -18,105 +18,105 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <postStartupActivity
-                implementation="skyhanni.plugin.startup.SkyHanniPluginActivity"/>
+            implementation="skyhanni.plugin.startup.SkyHanniPluginActivity"/>
 
         <!-- Must be declared so NotificationGroupManager can find it at runtime -->
         <notificationGroup
-                id="SkyHanni Plugin"
-                displayType="BALLOON"
-                isLogByDefault="false"/>
+            id="SkyHanni Plugin"
+            displayType="BALLOON"
+            isLogByDefault="false"/>
 
         <!-- Inlay hints -->
         <codeInsight.declarativeInlayProvider
-                language="kotlin"
-                implementationClass="skyhanni.plugin.areas.event.EventHandlerInlayHintsProvider"
-                isEnabledByDefault="true"
-                group="OTHER_GROUP"
-                providerId="skyhanni.event.primaryfunction.hint"
-                nameKey="inlay.hints.event.primaryfunction.name"
-                bundle="messages.SkyHanniBundle"/>
+            language="kotlin"
+            implementationClass="skyhanni.plugin.areas.event.EventHandlerInlayHintsProvider"
+            isEnabledByDefault="true"
+            group="OTHER_GROUP"
+            providerId="skyhanni.event.primaryfunction.hint"
+            nameKey="inlay.hints.event.primaryfunction.name"
+            bundle="messages.SkyHanniBundle"/>
 
         <codeInsight.inlayProvider
-                language="kotlin"
-                implementationClass="skyhanni.plugin.areas.config.ConfigPathInlayHintsProvider"/>
+            language="kotlin"
+            implementationClass="skyhanni.plugin.areas.config.ConfigPathInlayHintsProvider"/>
 
         <!-- Line markers -->
         <codeInsight.lineMarkerProvider
-                language="kotlin"
-                implementationClass="skyhanni.plugin.areas.misc.Regex101LineMarkerProvider"/>
+            language="kotlin"
+            implementationClass="skyhanni.plugin.areas.misc.Regex101LineMarkerProvider"/>
 
         <codeInsight.lineMarkerProvider
-                language="kotlin"
-                implementationClass="skyhanni.plugin.areas.event.EventHandlerLineMarkerProvider"/>
+            language="kotlin"
+            implementationClass="skyhanni.plugin.areas.event.EventHandlerLineMarkerProvider"/>
 
         <!-- Inspections -->
         <localInspection
-                language="kotlin"
-                groupName="SkyHanni"
-                displayName="Event handler function should be annotated with @HandleEvent"
-                shortName="HandleEventInspection"
-                enabledByDefault="true"
-                level="WARNING"
-                implementationClass="skyhanni.plugin.areas.event.HandleEventInspection"/>
+            language="kotlin"
+            groupName="SkyHanni"
+            displayName="Event handler function should be annotated with @HandleEvent"
+            shortName="HandleEventInspection"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="skyhanni.plugin.areas.event.HandleEventInspection"/>
 
         <localInspection
-                language="kotlin"
-                groupName="SkyHanni"
-                displayName="Event should have @PrimaryFunction or be abstract"
-                shortName="MissingPrimaryFunction"
-                enabledByDefault="true"
-                level="WEAK WARNING"
-                implementationClass="skyhanni.plugin.areas.event.primary.MissingPrimaryFunctionInspection"/>
+            language="kotlin"
+            groupName="SkyHanni"
+            displayName="Event should have @PrimaryFunction or be abstract"
+            shortName="MissingPrimaryFunction"
+            enabledByDefault="true"
+            level="WEAK WARNING"
+            implementationClass="skyhanni.plugin.areas.event.primary.MissingPrimaryFunctionInspection"/>
 
         <localInspection
-                language="kotlin"
-                groupName="SkyHanni"
-                displayName="Handler function name does not match @PrimaryFunction for the event"
-                shortName="MismatchedPrimaryFunctionName"
-                enabledByDefault="true"
-                level="WARNING"
-                implementationClass="skyhanni.plugin.areas.event.primary.MismatchedPrimaryFunctionInspection"/>
+            language="kotlin"
+            groupName="SkyHanni"
+            displayName="Handler function name does not match @PrimaryFunction for the event"
+            shortName="MismatchedPrimaryFunctionName"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="skyhanni.plugin.areas.event.primary.MismatchedPrimaryFunctionInspection"/>
 
         <localInspection
-                language="kotlin"
-                groupName="SkyHanni"
-                displayName="Multiple events use the same @PrimaryFunction name"
-                shortName="DuplicatePrimaryFunction"
-                enabledByDefault="true"
-                level="WARNING"
-                implementationClass="skyhanni.plugin.areas.event.primary.DuplicatePrimaryFunctionInspection"/>
+            language="kotlin"
+            groupName="SkyHanni"
+            displayName="Multiple events use the same @PrimaryFunction name"
+            shortName="DuplicatePrimaryFunction"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="skyhanni.plugin.areas.event.primary.DuplicatePrimaryFunctionInspection"/>
 
         <localInspection
-                language="kotlin"
-                groupName="SkyHanni"
-                displayName="Module should have a @SkyHanniModule annotation"
-                shortName="SkyHanniModuleInspection"
-                enabledByDefault="true"
-                level="WARNING"
-                implementationClass="skyhanni.plugin.areas.misc.SkyHanniModuleInspection"/>
+            language="kotlin"
+            groupName="SkyHanni"
+            displayName="Module should have a @SkyHanniModule annotation"
+            shortName="SkyHanniModuleInspection"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="skyhanni.plugin.areas.misc.SkyHanniModuleInspection"/>
 
         <localInspection
-                language="kotlin"
-                groupName="SkyHanni"
-                displayName="Copy config path for a @ConfigOption property"
-                shortName="CopyConfigPath"
-                enabledByDefault="true"
-                level="INFORMATION"
-                implementationClass="skyhanni.plugin.areas.config.CopyConfigPathInspection"/>
+            language="kotlin"
+            groupName="SkyHanni"
+            displayName="Copy config path for a @ConfigOption property"
+            shortName="CopyConfigPath"
+            enabledByDefault="true"
+            level="INFORMATION"
+            implementationClass="skyhanni.plugin.areas.config.CopyConfigPathInspection"/>
 
         <!-- Reference contributors -->
         <psi.referenceContributor
-                language="kotlin"
-                implementation="skyhanni.plugin.areas.config.ConfigPathReferenceContributor"/>
+            language="kotlin"
+            implementation="skyhanni.plugin.areas.config.ConfigPathReferenceContributor"/>
 
         <psi.referenceContributor
-                language="kotlin"
-                implementation="skyhanni.plugin.areas.event.primary.PrimaryFunctionReferenceContributor"/>
+            language="kotlin"
+            implementation="skyhanni.plugin.areas.event.primary.PrimaryFunctionReferenceContributor"/>
 
         <!-- Completion -->
         <completion.contributor
-                language="kotlin"
-                implementationClass="skyhanni.plugin.areas.event.EventHandlerCompletionContributor"/>
+            language="kotlin"
+            implementationClass="skyhanni.plugin.areas.event.EventHandlerCompletionContributor"/>
 
         <!-- Intentions -->
         <intentionAction>
@@ -137,5 +137,13 @@
             <category>SkyHanni</category>
         </intentionAction>
 
+        <!-- Spellchecking -->
+        <spellchecker.support
+            language="kotlin"
+            implementationClass="skyhanni.plugin.areas.misc.SkyHanniSpellcheckingStrategy"/>
+
+        <lang.inspectionSuppressor
+            language="kotlin"
+            implementationClass="skyhanni.plugin.areas.misc.SkyHanniInspectionSuppressor"/>
     </extensions>
 </idea-plugin>
