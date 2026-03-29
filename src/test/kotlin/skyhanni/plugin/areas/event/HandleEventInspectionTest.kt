@@ -49,8 +49,6 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
             .filter { it in INSPECTION_MESSAGES }
     }
 
-    // ---- Override visibility fix ----
-
     fun testOverrideWithEventReceiverAndNoExplicitVisibilityDoesNotWarn() {
         // Core regression: override inherits `internal` from the abstract declaration.
         // PSI sees no explicit modifier and reports isPublic=true, but the function is
@@ -117,8 +115,6 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
         assertFalse(MISSING_ANNOTATION in warnings)
     }
 
-    // ---- Standard non-override cases ----
-
     fun testPublicFunctionWithEventParamWarns() {
         addEventBase()
         addFooEvent()
@@ -157,8 +153,6 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
         assertFalse(MISSING_ANNOTATION in warnings)
     }
 
-    // ---- Visibility modifiers that suppress the warning ----
-
     fun testInternalFunctionWithEventParamDoesNotWarn() {
         addEventBase()
         addFooEvent()
@@ -195,7 +189,24 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
         assertFalse(MISSING_ANNOTATION in warnings)
     }
 
-    // ---- @HandleEvent on non-public function ----
+    fun testHandleEventOnOverrideOfPublicFunctionDoesNotWarnMustBePublic() {
+        // Regression: override fun with no explicit visibility keyword inherits public from parent.
+        // Must not trigger MUST_BE_PUBLIC.
+        addEventBase()
+        addFooEvent()
+        val warnings = inspect("""
+            package com.example
+            import at.hannibal2.skyhanni.api.event.HandleEvent
+            abstract class AbstractModule {
+                open fun handle(event: FooEvent) {}
+            }
+            object ConcreteModule : AbstractModule() {
+                @HandleEvent
+                override fun handle(event: FooEvent) = super.handle(event)
+            }
+        """)
+        assertFalse(MUST_BE_PUBLIC in warnings)
+    }
 
     fun testHandleEventWithExplicitEventTypeOnInternalFunctionWarns() {
         addEventBase()
@@ -210,8 +221,6 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
         """)
         assertTrue(MUST_BE_PUBLIC in warnings)
     }
-
-    // ---- @HandleEvent on function that takes no event ----
 
     fun testHandleEventOnNonEventFunctionWarns() {
         addEventBase()

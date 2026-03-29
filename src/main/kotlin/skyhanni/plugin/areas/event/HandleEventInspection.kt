@@ -89,9 +89,17 @@ class HandleEventInspection : AbstractKotlinInspection() {
                 function.isPublic || function.hasModifier(KtTokens.PUBLIC_KEYWORD)
             }
 
-            // @HandleEvent on non-public function
+            // @HandleEvent on non-public function.
+            // For overrides without an explicit visibility modifier, we cannot determine inherited
+            // visibility without type resolution. Only block @HandleEvent when the override carries
+            // an explicit restricting modifier (private/internal/protected); otherwise the function
+            // may legitimately inherit public visibility from its parent.
+            val isExplicitlyNonPublic = function.hasModifier(KtTokens.PRIVATE_KEYWORD) ||
+                function.hasModifier(KtTokens.INTERNAL_KEYWORD) ||
+                function.hasModifier(KtTokens.PROTECTED_KEYWORD)
+            val effectivelyNotPublic = if (function.hasModifier(KtTokens.OVERRIDE_KEYWORD)) isExplicitlyNonPublic else !isPublic
             val needsPublic = hasHandleEventAnnotation && (hasExplicitEventType || isPrimaryFunctionName)
-            if (!isPublic && needsPublic) return holder.registerProblem(
+            if (effectivelyNotPublic && needsPublic) return holder.registerProblem(
                 function,
                 "Function must be public to be annotated with @HandleEvent",
                 ProblemHighlightType.GENERIC_ERROR
