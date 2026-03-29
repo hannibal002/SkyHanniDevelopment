@@ -12,6 +12,7 @@ import com.intellij.psi.util.InheritanceUtil
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
 
 class EventHandlerLineMarkerProvider : LineMarkerProvider {
 
@@ -29,7 +30,8 @@ class EventHandlerLineMarkerProvider : LineMarkerProvider {
             val parent = element.parent
             val namedId = (parent as? KtNamedFunction)?.nameIdentifier
             val classId = (parent as? KtClass)?.nameIdentifier
-            if (element != namedId && element != classId) continue
+            val objectId = (parent as? KtObjectDeclaration)?.nameIdentifier
+            if (element != namedId && element != classId && element != objectId) continue
             buildMarker(element, parent, facade, scope, project)?.let(result::add)
         }
     }
@@ -52,6 +54,19 @@ class EventHandlerLineMarkerProvider : LineMarkerProvider {
 
         is KtClass -> {
             if (parent.hasModifier(KtTokens.ABSTRACT_KEYWORD)) return null
+            val fqName = parent.fqName?.asString() ?: return null
+            val psiClass = facade.findClass(fqName, scope) ?: return null
+            if (!InheritanceUtil.isInheritor(psiClass, SKYHANNI_EVENT_FQN)) return null
+            val handlers = findHandlersForEvent(psiClass, project).takeIf { it.isNotEmpty() } ?: return null
+            NavigationGutterIconBuilder.create(AllIcons.Gutter.OverridenMethod)
+                .setTargets(handlers)
+                .setTooltipText("Handled by ${handlers.size} handler(s)")
+                .setPopupTitle("Event Handlers")
+                .setAlignment(GutterIconRenderer.Alignment.LEFT)
+                .createLineMarkerInfo(element)
+        }
+
+        is KtObjectDeclaration -> {
             val fqName = parent.fqName?.asString() ?: return null
             val psiClass = facade.findClass(fqName, scope) ?: return null
             if (!InheritanceUtil.isInheritor(psiClass, SKYHANNI_EVENT_FQN)) return null

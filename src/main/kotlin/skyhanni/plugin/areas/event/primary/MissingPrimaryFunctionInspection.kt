@@ -9,14 +9,16 @@ import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.InheritanceUtil
-import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.idea.codeinsight.api.classic.inspections.AbstractKotlinInspection
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtVisitorVoid
 import skyhanni.plugin.areas.event.PRIMARY_FUNCTION_ANNOTATION
+import skyhanni.plugin.areas.event.PRIMARY_FUNCTION_FQN
 import skyhanni.plugin.areas.event.SKYHANNI_EVENT_FQN
 import skyhanni.plugin.areas.event.buildPrimaryNameMap
 
@@ -43,35 +45,38 @@ class MissingPrimaryFunctionInspection : AbstractKotlinInspection() {
         override fun visitClass(klass: KtClass) {
             if (klass.hasModifier(KtTokens.ABSTRACT_KEYWORD)) return
             if (klass.isInterface()) return
-            if (klass.annotationEntries.any { it.shortName?.asString() == PRIMARY_FUNCTION_ANNOTATION }) return
-
-            val fqName = klass.fqName?.asString() ?: return
-            val project = klass.project
-            val psiClass = JavaPsiFacade.getInstance(project)
-                .findClass(fqName, GlobalSearchScope.allScope(project)) ?: return
-            if (!InheritanceUtil.isInheritor(psiClass, SKYHANNI_EVENT_FQN)) return
-
-            // If the class's own name ends with "Event", derive from it directly (e.g. SlotClickEvent → onSlotClick).
-            // Only fall back to the enclosing class for inner non-event classes like Allow/Cancel/Pre.
-            val className = klass.name ?: return
-            val baseName = if (className.endsWith("Event")) className
-            else PsiTreeUtil.getParentOfType(klass, KtClassOrObject::class.java)?.name ?: className
-
-            val stripped = if (baseName.endsWith("Event")) baseName.dropLast(5) else baseName
-            val candidate = "on$stripped"
-
-            val fix = if (candidate !in buildPrimaryNameMap(project).keys) AddPrimaryFunctionFix(candidate) else null
-
-            holder.registerProblem(
-                holder.manager.createProblemDescriptor(
-                    klass.nameIdentifier ?: return,
-                    "Event should either have a @PrimaryFunction, or be abstract",
-                    fix,
-                    ProblemHighlightType.WEAK_WARNING,
-                    isOnTheFly,
-                )
-            )
+            checkClassOrObject(klass, holder, isOnTheFly)
         }
+
+        override fun visitObjectDeclaration(declaration: KtObjectDeclaration) {
+            checkClassOrObject(declaration, holder, isOnTheFly)
+        }
+    }
+
+    private fun checkClassOrObject(classOrObject: KtClassOrObject, holder: ProblemsHolder, isOnTheFly: Boolean) {
+        if (classOrObject.annotationEntries.any { it.shortName?.asString() == PRIMARY_FUNCTION_ANNOTATION }) return
+
+        val fqName = classOrObject.fqName?.asString() ?: return
+        val project = classOrObject.project
+        val psiClass = JavaPsiFacade.getInstance(project)
+            .findClass(fqName, GlobalSearchScope.allScope(project)) ?: return
+        if (!InheritanceUtil.isInheritor(psiClass, SKYHANNI_EVENT_FQN)) return
+
+        val className = classOrObject.name ?: return
+        val stripped = if (className.endsWith("Event")) className.dropLast(5) else className
+        val candidate = "on$stripped"
+
+        val fix = if (candidate !in buildPrimaryNameMap(project).keys) AddPrimaryFunctionFix(candidate) else null
+
+        holder.registerProblem(
+            holder.manager.createProblemDescriptor(
+                classOrObject.nameIdentifier ?: return,
+                "Event should either have a @PrimaryFunction, or be abstract",
+                fix,
+                ProblemHighlightType.WEAK_WARNING,
+                isOnTheFly,
+            )
+        )
     }
 
     private class AddPrimaryFunctionFix(private val name: String) : LocalQuickFix {
@@ -79,9 +84,18 @@ class MissingPrimaryFunctionInspection : AbstractKotlinInspection() {
         override fun getFamilyName() = "Add @PrimaryFunction"
 
         override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-            val klass = descriptor.psiElement.parent as? KtClass ?: return
-            val annotation = KtPsiFactory(project).createAnnotationEntry("@${PRIMARY_FUNCTION_ANNOTATION}(\"$name\")")
-            klass.addAnnotationEntry(annotation)
+            val classOrObject = descriptor.psiElement.parent as? KtClassOrObject ?: return
+            val factory = KtPsiFactory(project)
+            val annotation = factory.createAnnotationEntry("@${PRIMARY_FUNCTION_ANNOTATION}(\"$name\")")
+            classOrObject.addAnnotationEntry(annotation)
+            val file = classOrObject.containingFile as? KtFile ?: return
+            addImportIfMissing(file, factory, PRIMARY_FUNCTION_FQN)
+        }
+
+        private fun addImportIfMissing(file: KtFile, factory: KtPsiFactory, fqName: String) {
+            if (file.importDirectives.any { it.importedFqName?.asString() == fqName }) return
+            val importDirective = factory.createFile("import $fqName\n").importDirectives.firstOrNull() ?: return
+            (file.importList ?: file).add(importDirective)
         }
     }
 }

@@ -24,6 +24,7 @@ const val SKYHANNI_EVENT_FQN = "at.hannibal2.skyhanni.api.event.SkyHanniEvent"
 const val HANDLE_EVENT_ANNOTATION = "HandleEvent"
 const val HANDLE_EVENT_FQN = "at.hannibal2.skyhanni.api.event.HandleEvent"
 const val PRIMARY_FUNCTION_ANNOTATION = "PrimaryFunction"
+const val PRIMARY_FUNCTION_FQN = "at.hannibal2.skyhanni.skyhannimodule.PrimaryFunction"
 
 /**
  * Returns the simple referenced class name from this type reference,
@@ -100,6 +101,13 @@ fun resolveEventClass(function: KtNamedFunction, project: Project): PsiClass? {
             return PsiShortNamesCache.getInstance(project).getClassesByName(rawType, scope)
                 .firstOrNull { InheritanceUtil.isInheritor(it, SKYHANNI_EVENT_FQN) }
         }
+
+        val receiverType = function.receiverTypeReference?.referencedTypeName()
+        if (receiverType != null) {
+            PsiShortNamesCache.getInstance(project).getClassesByName(receiverType, scope)
+                .firstOrNull { InheritanceUtil.isInheritor(it, SKYHANNI_EVENT_FQN) }
+                ?.let { return it }
+        }
     }
 
     return buildPrimaryNameMap(project)[function.name.orEmpty()]
@@ -109,8 +117,9 @@ fun resolveEventClass(function: KtNamedFunction, project: Project): PsiClass? {
 /**
  * Finds all @HandleEvent functions in the project that handle [psiClass].
  *
- * Covers three cases:
+ * Covers four cases:
  * - Parameter type reference: fun onX(event: SomeEvent)
+ * - Receiver type reference: fun SomeEvent.onX()
  * - Annotation argument: @HandleEvent(eventType = SomeEvent::class)
  * - Primary function name match (parameterless handlers)
  */
@@ -130,6 +139,16 @@ fun findHandlersForEvent(psiClass: PsiClass, project: Project): List<KtNamedFunc
         if (param != null) {
             val fn = PsiTreeUtil.getParentOfType(param, KtNamedFunction::class.java)
             if (fn != null && fn.annotationEntries.any { it.shortName?.asString() == HANDLE_EVENT_ANNOTATION }) {
+                result.add(fn)
+                continue
+            }
+        }
+        val typeRef = PsiTreeUtil.getParentOfType(ref.element, KtTypeReference::class.java)
+        if (typeRef != null) {
+            val fn = typeRef.parent as? KtNamedFunction
+            if (fn != null && fn.receiverTypeReference == typeRef &&
+                fn.annotationEntries.any { it.shortName?.asString() == HANDLE_EVENT_ANNOTATION }
+            ) {
                 result.add(fn)
                 continue
             }

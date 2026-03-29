@@ -57,6 +57,18 @@ class HandleEventInspection : AbstractKotlinInspection() {
                     .any { InheritanceUtil.isInheritor(it, SKYHANNI_EVENT_FQN) }
             }
 
+            val isEventReceiver = run {
+                val typeRef = function.receiverTypeReference ?: return@run false
+                val rawType = typeRef.text
+                    .substringBefore('<')
+                    .substringBefore('?')
+                    .substringAfterLast('.')
+                val scope = GlobalSearchScope.allScope(function.project)
+                PsiShortNamesCache.getInstance(function.project)
+                    .getClassesByName(rawType, scope)
+                    .any { InheritanceUtil.isInheritor(it, SKYHANNI_EVENT_FQN) }
+            }
+
             val annotationEntry = function.annotationEntries
                 .find { it.shortName?.asString() == HANDLE_EVENT_ANNOTATION }
 
@@ -79,9 +91,8 @@ class HandleEventInspection : AbstractKotlinInspection() {
             )
 
             // Missing @HandleEvent on a clear event handler
-            if (isEventParam &&
+            if ((isEventParam && function.valueParameters.size == 1 || isEventReceiver && function.valueParameters.isEmpty()) &&
                 !hasHandleEventAnnotation &&
-                function.valueParameters.size == 1 &&
                 function.isPublic &&
                 !function.hasModifier(KtTokens.OPEN_KEYWORD)
             ) return holder.registerProblem(
@@ -91,7 +102,7 @@ class HandleEventInspection : AbstractKotlinInspection() {
             )
 
             // @HandleEvent on a function that doesn't take a SkyHanniEvent
-            if (!isEventParam && !hasExplicitEventType && !isPrimaryFunctionName && hasHandleEventAnnotation) {
+            if (!isEventParam && !isEventReceiver && !hasExplicitEventType && !isPrimaryFunctionName && hasHandleEventAnnotation) {
                 holder.registerProblem(
                     function,
                     "Function should not be annotated with @HandleEvent if it does not take a SkyHanniEvent",
