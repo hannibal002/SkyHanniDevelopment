@@ -107,11 +107,26 @@ class HandleEventInspection : AbstractKotlinInspection() {
                     function.hasModifier(KtTokens.OVERRIDE_KEYWORD) &&
                         !function.hasModifier(KtTokens.PUBLIC_KEYWORD)
                     )
-            ) return holder.registerProblem(
-                function.nameIdentifier ?: function,
-                "Event handler function should be annotated with @HandleEvent",
-                AddHandleEventAnnotationFix(),
-            )
+            ) {
+                val typeText = when {
+                    isEventParam -> function.valueParameters.firstOrNull()?.typeReference?.text
+                    else -> function.receiverTypeReference?.text
+                }
+                val eventClass = typeText
+                    ?.substringBefore('<')
+                    ?.substringBefore('?')
+                    ?.substringAfterLast('.')
+                val message = if (eventClass != null) {
+                    "Function seems to handle $eventClass. Add @HandleEvent if this is an event handler."
+                } else {
+                    "Event handler function should be annotated with @HandleEvent"
+                }
+                return holder.registerProblem(
+                    function.nameIdentifier ?: function,
+                    message,
+                    AddHandleEventAnnotationFix(),
+                )
+            }
 
             // Missing @HandleEvent on a function whose name matches a @PrimaryFunction declaration.
             if (isPrimaryFunctionName &&
@@ -125,7 +140,7 @@ class HandleEventInspection : AbstractKotlinInspection() {
                     function.nameIdentifier ?: function,
                     "Function name matches @PrimaryFunction of $eventClass. " +
                         "Either add @HandleEvent if this is an event handler, or rename the function",
-                    ProblemHighlightType.WEAK_WARNING,
+                    ProblemHighlightType.WARNING,
                     AddHandleEventAnnotationFix(),
                 )
             }

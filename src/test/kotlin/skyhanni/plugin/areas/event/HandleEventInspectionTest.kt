@@ -11,11 +11,11 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
  */
 class HandleEventInspectionTest : BasePlatformTestCase() {
 
-    private val MISSING_ANNOTATION = "Event handler function should be annotated with @HandleEvent"
+    private val MISSING_ANNOTATION_PREFIX = "Function seems to handle"
     private val SHOULD_BE_PRIVATE = "Event handler function should be private"
     private val SHOULD_NOT_BE_ANNOTATED = "Function should not be annotated with @HandleEvent if it does not take a SkyHanniEvent"
     private val PRIMARY_NAME_MATCH_PREFIX = "Function name matches @PrimaryFunction of"
-    private val INSPECTION_MESSAGES = setOf(MISSING_ANNOTATION, SHOULD_BE_PRIVATE, SHOULD_NOT_BE_ANNOTATED)
+    private val INSPECTION_MESSAGES = setOf(SHOULD_BE_PRIVATE, SHOULD_NOT_BE_ANNOTATED)
 
     private fun addEventBase() {
         myFixture.addFileToProject(
@@ -60,7 +60,11 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
         myFixture.configureByText("Test.kt", code.trimIndent())
         return myFixture.doHighlighting()
             .mapNotNull { it.description }
-            .filter { it in INSPECTION_MESSAGES || it.startsWith(PRIMARY_NAME_MATCH_PREFIX) }
+            .filter {
+                it in INSPECTION_MESSAGES ||
+                    it.startsWith(PRIMARY_NAME_MATCH_PREFIX) ||
+                    it.startsWith(MISSING_ANNOTATION_PREFIX)
+            }
     }
 
     fun testOverrideWithEventReceiverAndNoExplicitVisibilityDoesNotWarn() {
@@ -80,7 +84,7 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
             }
         """,
         )
-        assertFalse(MISSING_ANNOTATION in warnings)
+        assertFalse(warnings.any { it.startsWith(MISSING_ANNOTATION_PREFIX) })
     }
 
     fun testOverrideWithEventParamAndNoExplicitVisibilityDoesNotWarn() {
@@ -97,7 +101,7 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
             }
         """,
         )
-        assertFalse(MISSING_ANNOTATION in warnings)
+        assertFalse(warnings.any { it.startsWith(MISSING_ANNOTATION_PREFIX) })
     }
 
     fun testExplicitPublicOverrideWithEventReceiverWarns() {
@@ -115,7 +119,7 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
             }
         """,
         )
-        assertTrue(MISSING_ANNOTATION in warnings)
+        assertTrue(warnings.any { it.startsWith(MISSING_ANNOTATION_PREFIX) })
     }
 
     fun testExplicitPublicOverrideWithHandleEventDoesNotWarn() {
@@ -134,7 +138,7 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
             }
         """,
         )
-        assertFalse(MISSING_ANNOTATION in warnings)
+        assertFalse(warnings.any { it.startsWith(MISSING_ANNOTATION_PREFIX) })
     }
 
     fun testPublicFunctionWithEventParamWarns() {
@@ -148,7 +152,7 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
             }
         """,
         )
-        assertTrue(MISSING_ANNOTATION in warnings)
+        assertTrue(warnings.any { it.startsWith(MISSING_ANNOTATION_PREFIX) })
     }
 
     fun testPublicFunctionWithEventReceiverWarns() {
@@ -162,7 +166,7 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
             }
         """,
         )
-        assertTrue(MISSING_ANNOTATION in warnings)
+        assertTrue(warnings.any { it.startsWith(MISSING_ANNOTATION_PREFIX) })
     }
 
     fun testPrivateFunctionWithEventReceiverDoesNotWarn() {
@@ -176,7 +180,7 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
               }
           """,
         )
-        assertFalse(MISSING_ANNOTATION in warnings)
+        assertFalse(warnings.any { it.startsWith(MISSING_ANNOTATION_PREFIX) })
     }
 
     fun testAnnotatedFunctionDoesNotWarn() {
@@ -192,7 +196,7 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
             }
         """,
         )
-        assertFalse(MISSING_ANNOTATION in warnings)
+        assertFalse(warnings.any { it.startsWith(MISSING_ANNOTATION_PREFIX) })
     }
 
     fun testInternalFunctionWithEventParamWarns() {
@@ -206,7 +210,7 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
               }
           """,
         )
-        assertTrue(MISSING_ANNOTATION in warnings)
+        assertTrue(warnings.any { it.startsWith(MISSING_ANNOTATION_PREFIX) })
     }
 
     fun testPrivateFunctionWithEventParamWarns() {
@@ -220,7 +224,7 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
               }
           """,
         )
-        assertTrue(MISSING_ANNOTATION in warnings)
+        assertTrue(warnings.any { it.startsWith(MISSING_ANNOTATION_PREFIX) })
     }
 
     fun testOpenFunctionWithEventParamDoesNotWarn() {
@@ -234,7 +238,7 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
             }
         """,
         )
-        assertFalse(MISSING_ANNOTATION in warnings)
+        assertFalse(warnings.any { it.startsWith(MISSING_ANNOTATION_PREFIX) })
     }
 
     fun testHandleEventOnOverrideDoesNotWarnShouldBePrivate() {
