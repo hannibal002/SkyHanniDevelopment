@@ -17,7 +17,6 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtVisitorVoid
 import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
-import org.jetbrains.kotlin.psi.psiUtil.isPublic
 
 private const val EVENT_TYPE_PARAM = "eventType"
 private const val EVENT_TYPES_PARAM = "eventTypes"
@@ -80,41 +79,38 @@ class HandleEventInspection : AbstractKotlinInspection() {
                 argName in eventParams || position == 0 && expressionText.isNotEmpty()
             }
 
-            // For override functions, visibility is inherited - PSI's isPublic returns true when there's no
-            // explicit modifier, but the actual visibility may be internal or less. Require an explicit
-            // public keyword for overrides to avoid false positives on internal abstract overrides.
-            val isPublic = if (function.hasModifier(KtTokens.OVERRIDE_KEYWORD)) {
-                function.hasModifier(KtTokens.PUBLIC_KEYWORD)
-            } else {
-                function.isPublic || function.hasModifier(KtTokens.PUBLIC_KEYWORD)
+            // @HandleEvent function should be private.
+            // Overrides are exempt: their visibility is constrained by the parent declaration.
+            if (hasHandleEventAnnotation &&
+                !function.hasModifier(KtTokens.PRIVATE_KEYWORD) &&
+                !function.hasModifier(KtTokens.OVERRIDE_KEYWORD)
+            ) {
+                holder.registerProblem(
+                    function,
+                    "Event handler function should be private",
+                    ProblemHighlightType.WEAK_WARNING,
+                    MakeEventHandlerPrivateFix(),
+                )
             }
 
-            // @HandleEvent on non-public function.
-            // For overrides without an explicit visibility modifier, we cannot determine inherited
-            // visibility without type resolution. Only block @HandleEvent when the override carries
-            // an explicit restricting modifier (private/internal/protected); otherwise the function
-            // may legitimately inherit public visibility from its parent.
-            val isExplicitlyNonPublic = function.hasModifier(KtTokens.PRIVATE_KEYWORD) ||
-                function.hasModifier(KtTokens.INTERNAL_KEYWORD) ||
-                function.hasModifier(KtTokens.PROTECTED_KEYWORD)
-            val effectivelyNotPublic = if (function.hasModifier(KtTokens.OVERRIDE_KEYWORD)) isExplicitlyNonPublic else !isPublic
-            val needsPublic = hasHandleEventAnnotation && (hasExplicitEventType || isPrimaryFunctionName)
-            if (effectivelyNotPublic && needsPublic) return holder.registerProblem(
-                function,
-                "Function must be public to be annotated with @HandleEvent",
-                ProblemHighlightType.GENERIC_ERROR
-            )
-
-            // Missing @HandleEvent on a clear event handler
+            // Missing @HandleEvent on a clear event handler.
+            // Overrides without an explicit public modifier are excluded: their actual visibility
+            // may be internal or less and cannot be determined without type resolution.
             @Suppress("ComplexCondition")
-            if ((isEventParam && function.valueParameters.size == 1 || isEventReceiver && function.valueParameters.isEmpty()) &&
+            if ((
+                    isEventParam && function.valueParameters.size == 1 || isEventReceiver &&
+                        function.valueParameters.isEmpty()
+                    ) &&
                 !hasHandleEventAnnotation &&
-                isPublic &&
-                !function.hasModifier(KtTokens.OPEN_KEYWORD)
+                !function.hasModifier(KtTokens.OPEN_KEYWORD) &&
+                !(
+                    function.hasModifier(KtTokens.OVERRIDE_KEYWORD) &&
+                        !function.hasModifier(KtTokens.PUBLIC_KEYWORD)
+                    )
             ) return holder.registerProblem(
                 function,
                 "Event handler function should be annotated with @HandleEvent",
-                AddHandleEventAnnotationFix()
+                AddHandleEventAnnotationFix(),
             )
 
             // @HandleEvent on a function that doesn't take a SkyHanniEvent
@@ -122,9 +118,18 @@ class HandleEventInspection : AbstractKotlinInspection() {
                 holder.registerProblem(
                     function,
                     "Function should not be annotated with @HandleEvent if it does not take a SkyHanniEvent",
-                    ProblemHighlightType.GENERIC_ERROR
+                    ProblemHighlightType.GENERIC_ERROR,
                 )
             }
+        }
+    }
+
+    private class MakeEventHandlerPrivateFix : LocalQuickFix {
+        override fun getName() = "Make private"
+        override fun getFamilyName() = name
+
+        override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+            (descriptor.psiElement as? KtNamedFunction)?.addModifier(KtTokens.PRIVATE_KEYWORD)
         }
     }
 }
@@ -141,7 +146,7 @@ private class AddHandleEventAnnotationFix : LocalQuickFix {
             null,
             { null },
             " ",
-            null
+            null,
         )
     }
 }

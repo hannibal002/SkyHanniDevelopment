@@ -12,9 +12,9 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 class HandleEventInspectionTest : BasePlatformTestCase() {
 
     private val MISSING_ANNOTATION = "Event handler function should be annotated with @HandleEvent"
-    private val MUST_BE_PUBLIC = "Function must be public to be annotated with @HandleEvent"
+    private val SHOULD_BE_PRIVATE = "Event handler function should be private"
     private val SHOULD_NOT_BE_ANNOTATED = "Function should not be annotated with @HandleEvent if it does not take a SkyHanniEvent"
-    private val INSPECTION_MESSAGES = setOf(MISSING_ANNOTATION, MUST_BE_PUBLIC, SHOULD_NOT_BE_ANNOTATED)
+    private val INSPECTION_MESSAGES = setOf(MISSING_ANNOTATION, SHOULD_BE_PRIVATE, SHOULD_NOT_BE_ANNOTATED)
 
     private fun addEventBase() {
         myFixture.addFileToProject(
@@ -25,7 +25,7 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
             open class SkyHanniEvent
             annotation class HandleEvent(val eventType: KClass<*> = SkyHanniEvent::class)
             annotation class PrimaryFunction(val value: String)
-            """.trimIndent()
+            """.trimIndent(),
         )
     }
 
@@ -36,7 +36,7 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
             package com.example
             import at.hannibal2.skyhanni.api.event.SkyHanniEvent
             class FooEvent : SkyHanniEvent()
-            """.trimIndent()
+            """.trimIndent(),
         )
     }
 
@@ -55,7 +55,8 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
         // not truly public. The inspection must not flag it.
         addEventBase()
         addFooEvent()
-        val warnings = inspect("""
+        val warnings = inspect(
+            """
             package com.example
             abstract class AbstractTracker<T> {
                 internal abstract fun T.handle(): Boolean
@@ -63,14 +64,16 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
             object ConcreteTracker : AbstractTracker<FooEvent>() {
                 override fun FooEvent.handle(): Boolean = true
             }
-        """)
+        """,
+        )
         assertFalse(MISSING_ANNOTATION in warnings)
     }
 
     fun testOverrideWithEventParamAndNoExplicitVisibilityDoesNotWarn() {
         addEventBase()
         addFooEvent()
-        val warnings = inspect("""
+        val warnings = inspect(
+            """
             package com.example
             abstract class AbstractModule {
                 internal abstract fun handle(event: FooEvent)
@@ -78,7 +81,8 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
             object ConcreteModule : AbstractModule() {
                 override fun handle(event: FooEvent) {}
             }
-        """)
+        """,
+        )
         assertFalse(MISSING_ANNOTATION in warnings)
     }
 
@@ -86,7 +90,8 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
         // An override that explicitly declares `public` is truly public and should be flagged.
         addEventBase()
         addFooEvent()
-        val warnings = inspect("""
+        val warnings = inspect(
+            """
             package com.example
             abstract class AbstractTracker<T> {
                 abstract fun T.handle(): Boolean
@@ -94,14 +99,16 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
             object ConcreteTracker : AbstractTracker<FooEvent>() {
                 public override fun FooEvent.handle(): Boolean = true
             }
-        """)
+        """,
+        )
         assertTrue(MISSING_ANNOTATION in warnings)
     }
 
     fun testExplicitPublicOverrideWithHandleEventDoesNotWarn() {
         addEventBase()
         addFooEvent()
-        val warnings = inspect("""
+        val warnings = inspect(
+            """
             package com.example
             import at.hannibal2.skyhanni.api.event.HandleEvent
             abstract class AbstractTracker<T> {
@@ -111,127 +118,177 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
                 @HandleEvent
                 public override fun FooEvent.handle(): Boolean = true
             }
-        """)
+        """,
+        )
         assertFalse(MISSING_ANNOTATION in warnings)
     }
 
     fun testPublicFunctionWithEventParamWarns() {
         addEventBase()
         addFooEvent()
-        val warnings = inspect("""
+        val warnings = inspect(
+            """
             package com.example
             object MyModule {
                 fun onFoo(event: FooEvent) {}
             }
-        """)
+        """,
+        )
         assertTrue(MISSING_ANNOTATION in warnings)
     }
 
     fun testPublicFunctionWithEventReceiverWarns() {
         addEventBase()
         addFooEvent()
-        val warnings = inspect("""
+        val warnings = inspect(
+            """
             package com.example
             object MyModule {
                 fun FooEvent.handle() {}
             }
-        """)
+        """,
+        )
         assertTrue(MISSING_ANNOTATION in warnings)
     }
 
     fun testAnnotatedFunctionDoesNotWarn() {
         addEventBase()
         addFooEvent()
-        val warnings = inspect("""
+        val warnings = inspect(
+            """
             package com.example
             import at.hannibal2.skyhanni.api.event.HandleEvent
             object MyModule {
                 @HandleEvent
                 fun onFoo(event: FooEvent) {}
             }
-        """)
+        """,
+        )
         assertFalse(MISSING_ANNOTATION in warnings)
     }
 
-    fun testInternalFunctionWithEventParamDoesNotWarn() {
+    fun testInternalFunctionWithEventParamWarns() {
         addEventBase()
         addFooEvent()
-        val warnings = inspect("""
-            package com.example
-            object MyModule {
-                internal fun onFoo(event: FooEvent) {}
-            }
-        """)
-        assertFalse(MISSING_ANNOTATION in warnings)
+        val warnings = inspect(
+            """
+              package com.example
+              object MyModule {
+                  internal fun onFoo(event: FooEvent) {}
+              }
+          """,
+        )
+        assertTrue(MISSING_ANNOTATION in warnings)
     }
 
-    fun testPrivateFunctionWithEventParamDoesNotWarn() {
+    fun testPrivateFunctionWithEventParamWarns() {
         addEventBase()
         addFooEvent()
-        val warnings = inspect("""
-            package com.example
-            object MyModule {
-                private fun onFoo(event: FooEvent) {}
-            }
-        """)
-        assertFalse(MISSING_ANNOTATION in warnings)
+        val warnings = inspect(
+            """
+              package com.example
+              object MyModule {
+                  private fun onFoo(event: FooEvent) {}
+              }
+          """,
+        )
+        assertTrue(MISSING_ANNOTATION in warnings)
     }
 
     fun testOpenFunctionWithEventParamDoesNotWarn() {
         addEventBase()
         addFooEvent()
-        val warnings = inspect("""
+        val warnings = inspect(
+            """
             package com.example
             object MyModule {
                 open fun onFoo(event: FooEvent) {}
             }
-        """)
+        """,
+        )
         assertFalse(MISSING_ANNOTATION in warnings)
     }
 
-    fun testHandleEventOnOverrideOfPublicFunctionDoesNotWarnMustBePublic() {
-        // Regression: override fun with no explicit visibility keyword inherits public from parent.
-        // Must not trigger MUST_BE_PUBLIC.
+    fun testHandleEventOnOverrideDoesNotWarnShouldBePrivate() {
+        // Override visibility is constrained by the parent declaration; no warning expected.
         addEventBase()
         addFooEvent()
-        val warnings = inspect("""
-            package com.example
-            import at.hannibal2.skyhanni.api.event.HandleEvent
-            abstract class AbstractModule {
-                open fun handle(event: FooEvent) {}
-            }
-            object ConcreteModule : AbstractModule() {
-                @HandleEvent
-                override fun handle(event: FooEvent) = super.handle(event)
-            }
-        """)
-        assertFalse(MUST_BE_PUBLIC in warnings)
+        val warnings = inspect(
+            """
+              package com.example
+              import at.hannibal2.skyhanni.api.event.HandleEvent
+              abstract class AbstractModule {
+                  open fun handle(event: FooEvent) {}
+              }
+              object ConcreteModule : AbstractModule() {
+                  @HandleEvent
+                  override fun handle(event: FooEvent) = super.handle(event)
+              }
+          """,
+        )
+        assertFalse(SHOULD_BE_PRIVATE in warnings)
     }
 
-    fun testHandleEventWithExplicitEventTypeOnInternalFunctionWarns() {
+    fun testHandleEventWithExplicitEventTypeOnInternalFunctionWarnsShouldBePrivate() {
         addEventBase()
         addFooEvent()
-        val warnings = inspect("""
-            package com.example
-            import at.hannibal2.skyhanni.api.event.HandleEvent
-            object MyModule {
-                @HandleEvent(eventType = FooEvent::class)
-                internal fun doSomething() {}
-            }
-        """)
-        assertTrue(MUST_BE_PUBLIC in warnings)
+        val warnings = inspect(
+            """
+              package com.example
+              import at.hannibal2.skyhanni.api.event.HandleEvent
+              object MyModule {
+                  @HandleEvent(eventType = FooEvent::class)
+                  internal fun doSomething() {}
+              }
+          """,
+        )
+        assertTrue(SHOULD_BE_PRIVATE in warnings)
+    }
+
+    fun testPublicHandleEventFunctionWarnsShouldBePrivate() {
+        addEventBase()
+        addFooEvent()
+        val warnings = inspect(
+            """
+              package com.example
+              import at.hannibal2.skyhanni.api.event.HandleEvent
+              object MyModule {
+                  @HandleEvent
+                  fun onFoo(event: FooEvent) {}
+              }
+          """,
+        )
+        assertTrue(SHOULD_BE_PRIVATE in warnings)
+    }
+
+    fun testPrivateHandleEventFunctionDoesNotWarnShouldBePrivate() {
+        addEventBase()
+        addFooEvent()
+        val warnings = inspect(
+            """
+              package com.example
+              import at.hannibal2.skyhanni.api.event.HandleEvent
+              object MyModule {
+                  @HandleEvent
+                  private fun onFoo(event: FooEvent) {}
+              }
+          """,
+        )
+        assertFalse(SHOULD_BE_PRIVATE in warnings)
     }
 
     fun testHandleEventOnNonEventFunctionWarns() {
         addEventBase()
-        val warnings = inspect("""
+        val warnings = inspect(
+            """
             package com.example
             import at.hannibal2.skyhanni.api.event.HandleEvent
             object MyModule {
                 @HandleEvent
                 fun doSomething(x: String) {}
             }
-        """)
+        """,
+        )
         assertTrue(SHOULD_NOT_BE_ANNOTATED in warnings)
     }
 }

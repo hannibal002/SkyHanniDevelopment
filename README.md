@@ -16,8 +16,10 @@ The plugin understands SkyHanni's event system and validates event handler decla
 
 **Inspections**
 
-- **Missing `@HandleEvent`** - Flags public functions that accept a `SkyHanniEvent` parameter (or match a `@PrimaryFunction` name) without
-  the `@HandleEvent` annotation. A quick fix adds it.
+- **Missing `@HandleEvent`** - Flags functions that accept a `SkyHanniEvent` parameter (or match a `@PrimaryFunction` name) without the
+  `@HandleEvent` annotation. A quick fix adds it.
+- **Non-private `@HandleEvent`** - Flags `@HandleEvent` functions that are not explicitly `private`. A quick fix adds the `private`
+  modifier.
 - **Missing `@PrimaryFunction`** - Flags concrete `SkyHanniEvent` subclasses with no `@PrimaryFunction` annotation. Without it, handlers
   must use the verbose `eventType = ...` argument on every `@HandleEvent`. A quick fix suggests a derived name when one is available and not
   already taken.
