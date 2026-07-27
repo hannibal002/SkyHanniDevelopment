@@ -86,7 +86,7 @@ class HandleEventInspection : AbstractKotlinInspection() {
                 !function.hasModifier(KtTokens.OVERRIDE_KEYWORD)
             ) {
                 holder.registerProblem(
-                    function,
+                    function.nameIdentifier ?: function,
                     "Event handler function should be private",
                     ProblemHighlightType.WEAK_WARNING,
                     MakeEventHandlerPrivateFix(),
@@ -108,7 +108,7 @@ class HandleEventInspection : AbstractKotlinInspection() {
                         !function.hasModifier(KtTokens.PUBLIC_KEYWORD)
                     )
             ) return holder.registerProblem(
-                function,
+                function.nameIdentifier ?: function,
                 "Event handler function should be annotated with @HandleEvent",
                 AddHandleEventAnnotationFix(),
             )
@@ -116,7 +116,7 @@ class HandleEventInspection : AbstractKotlinInspection() {
             // @HandleEvent on a function that doesn't take a SkyHanniEvent
             if (!isEventParam && !isEventReceiver && !hasExplicitEventType && !isPrimaryFunctionName && hasHandleEventAnnotation) {
                 holder.registerProblem(
-                    function,
+                    function.nameIdentifier ?: function,
                     "Function should not be annotated with @HandleEvent if it does not take a SkyHanniEvent",
                     ProblemHighlightType.GENERIC_ERROR,
                 )
@@ -129,7 +129,7 @@ class HandleEventInspection : AbstractKotlinInspection() {
         override fun getFamilyName() = name
 
         override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-            (descriptor.psiElement as? KtNamedFunction)?.addModifier(KtTokens.PRIVATE_KEYWORD)
+            (descriptor.psiElement.parent as? KtNamedFunction)?.addModifier(KtTokens.PRIVATE_KEYWORD)
         }
     }
 }
@@ -140,7 +140,7 @@ private class AddHandleEventAnnotationFix : LocalQuickFix {
 
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
         AnnotationModificationHelper.addAnnotation(
-            descriptor.psiElement as KtNamedFunction,
+            descriptor.psiElement.parent as KtNamedFunction,
             FqName(HANDLE_EVENT_FQN),
             null,
             null,
