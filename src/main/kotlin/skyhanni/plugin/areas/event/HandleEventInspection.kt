@@ -99,7 +99,7 @@ class HandleEventInspection : AbstractKotlinInspection() {
             @Suppress("ComplexCondition")
             if ((
                     isEventParam && function.valueParameters.size == 1 || isEventReceiver &&
-                        function.valueParameters.isEmpty()
+                        function.valueParameters.isEmpty() && !function.hasModifier(KtTokens.PRIVATE_KEYWORD)
                     ) &&
                 !hasHandleEventAnnotation &&
                 !function.hasModifier(KtTokens.OPEN_KEYWORD) &&

@@ -151,6 +151,20 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
         assertTrue(MISSING_ANNOTATION in warnings)
     }
 
+    fun testPrivateFunctionWithEventReceiverDoesNotWarn() {
+        addEventBase()
+        addFooEvent()
+        val warnings = inspect(
+            """
+              package com.example
+              object MyModule {
+                  private fun FooEvent.handle() {}
+              }
+          """,
+        )
+        assertFalse(MISSING_ANNOTATION in warnings)
+    }
+
     fun testAnnotatedFunctionDoesNotWarn() {
         addEventBase()
         addFooEvent()
