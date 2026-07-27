@@ -1,6 +1,6 @@
 # SkyHanni Development
 
-![Build](https://github.com/DavidArthurCole/SkyHanniDevelopment/workflows/Build/badge.svg)
+![Build](https://github.com/hannibal002/SkyHanniDevelopment/workflows/Build/badge.svg)
 
 <!-- Plugin description -->
 An IntelliJ IDE plugin that provides development assistance for the [SkyHanni](https://github.com/hannibal002/SkyHanni) Minecraft Skyblock
@@ -93,7 +93,7 @@ Using the IDE built-in plugin system:
 
 Manually:
 
-Download the [latest release](https://github.com/DavidArthurCole/SkyHanniDevelopment/releases/latest) and install it via
+Download the [latest release](https://github.com/hannibal002/SkyHanniDevelopment/releases/latest) and install it via
 <kbd>Settings</kbd> > <kbd>Plugins</kbd> > <kbd>⚙</kbd> > <kbd>Install plugin from disk...</kbd>
 
 ---
