@@ -113,6 +113,23 @@ class HandleEventInspection : AbstractKotlinInspection() {
                 AddHandleEventAnnotationFix(),
             )
 
+            // Missing @HandleEvent on a function whose name matches a @PrimaryFunction declaration.
+            if (isPrimaryFunctionName &&
+                !hasHandleEventAnnotation &&
+                !function.hasModifier(KtTokens.OPEN_KEYWORD) &&
+                !(function.hasModifier(KtTokens.OVERRIDE_KEYWORD) &&
+                    !function.hasModifier(KtTokens.PUBLIC_KEYWORD))
+            ) {
+                val eventClass = primaryNameMap[functionName]?.substringAfterLast('.') ?: functionName
+                holder.registerProblem(
+                    function.nameIdentifier ?: function,
+                    "Function name matches @PrimaryFunction of $eventClass. " +
+                        "Either add @HandleEvent if this is an event handler, or rename the function",
+                    ProblemHighlightType.WEAK_WARNING,
+                    AddHandleEventAnnotationFix(),
+                )
+            }
+
             // @HandleEvent on a function that doesn't take a SkyHanniEvent
             if (!isEventParam && !isEventReceiver && !hasExplicitEventType && !isPrimaryFunctionName && hasHandleEventAnnotation) {
                 holder.registerProblem(
@@ -142,11 +159,11 @@ private class AddHandleEventAnnotationFix : LocalQuickFix {
         AnnotationModificationHelper.addAnnotation(
             descriptor.psiElement.parent as KtNamedFunction,
             FqName(HANDLE_EVENT_FQN),
-            null,
-            null,
-            { null },
-            " ",
-            null,
+            annotationInnerText = null,
+            useSiteTarget = null,
+            searchForExistingEntry = { null },
+            whiteSpaceText = " ",
+            addToExistingAnnotation = null,
         )
     }
 }

@@ -14,6 +14,7 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
     private val MISSING_ANNOTATION = "Event handler function should be annotated with @HandleEvent"
     private val SHOULD_BE_PRIVATE = "Event handler function should be private"
     private val SHOULD_NOT_BE_ANNOTATED = "Function should not be annotated with @HandleEvent if it does not take a SkyHanniEvent"
+    private val PRIMARY_NAME_MATCH_PREFIX = "Function name matches @PrimaryFunction of"
     private val INSPECTION_MESSAGES = setOf(MISSING_ANNOTATION, SHOULD_BE_PRIVATE, SHOULD_NOT_BE_ANNOTATED)
 
     private fun addEventBase() {
@@ -40,13 +41,26 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
         )
     }
 
+    private fun addFooPrimaryEvent() {
+        myFixture.addFileToProject(
+            "com/example/FooPrimaryEvent.kt",
+            """
+              package com.example
+              import at.hannibal2.skyhanni.api.event.SkyHanniEvent
+              import at.hannibal2.skyhanni.api.event.PrimaryFunction
+              @PrimaryFunction("onFooPrimary")
+              class FooPrimaryEvent : SkyHanniEvent()
+              """.trimIndent(),
+        )
+    }
+
     /** Runs the inspection on [code] and returns only the messages this inspection can emit. */
     private fun inspect(code: String): List<String> {
         myFixture.enableInspections(HandleEventInspection::class.java)
         myFixture.configureByText("Test.kt", code.trimIndent())
         return myFixture.doHighlighting()
             .mapNotNull { it.description }
-            .filter { it in INSPECTION_MESSAGES }
+            .filter { it in INSPECTION_MESSAGES || it.startsWith(PRIMARY_NAME_MATCH_PREFIX) }
     }
 
     fun testOverrideWithEventReceiverAndNoExplicitVisibilityDoesNotWarn() {
@@ -289,6 +303,36 @@ class HandleEventInspectionTest : BasePlatformTestCase() {
           """,
         )
         assertFalse(SHOULD_BE_PRIVATE in warnings)
+    }
+
+    fun testPrimaryFunctionNameWithoutAnnotationWarns() {
+        addEventBase()
+        addFooPrimaryEvent()
+        val warnings = inspect(
+            """
+              package com.example
+              object MyModule {
+                  fun onFooPrimary() {}
+              }
+          """,
+        )
+        assertTrue(warnings.any { it.startsWith(PRIMARY_NAME_MATCH_PREFIX) })
+    }
+
+    fun testPrimaryFunctionNameWithAnnotationDoesNotWarn() {
+        addEventBase()
+        addFooPrimaryEvent()
+        val warnings = inspect(
+            """
+              package com.example
+              import at.hannibal2.skyhanni.api.event.HandleEvent
+              object MyModule {
+                  @HandleEvent
+                  fun onFooPrimary() {}
+              }
+          """,
+        )
+        assertFalse(warnings.any { it.startsWith(PRIMARY_NAME_MATCH_PREFIX) })
     }
 
     fun testHandleEventOnNonEventFunctionWarns() {
