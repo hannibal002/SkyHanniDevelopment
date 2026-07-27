@@ -91,6 +91,8 @@ Using the IDE built-in plugin system:
 
 <kbd>Settings</kbd> > <kbd>Plugins</kbd> > <kbd>Marketplace</kbd> > <kbd>Search for "SkyHanni Development"</kbd> > <kbd>Install</kbd>
 
+(does now work, not yet uploaded)
+
 Manually:
 
 Download the [latest release](https://github.com/hannibal002/SkyHanniDevelopment/releases/latest) and install it via
