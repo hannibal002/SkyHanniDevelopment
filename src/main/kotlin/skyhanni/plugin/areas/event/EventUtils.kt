@@ -19,6 +19,11 @@ import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.kotlin.psi.KtUserType
+import com.intellij.openapi.util.Key
+import com.intellij.psi.util.CachedValue
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.PsiModificationTracker
 
 const val SKYHANNI_EVENT_FQN = "at.hannibal2.skyhanni.api.event.SkyHanniEvent"
 const val HANDLE_EVENT_ANNOTATION = "HandleEvent"
@@ -45,7 +50,18 @@ private fun KtTypeReference.referencedTypeName(): String? {
  * primary function name to fully-qualified event class name, sourced from
  * the @PrimaryFunction annotation on each event class.
  */
-fun buildPrimaryNameMap(project: Project): Map<String, String> {
+
+private val primaryNameMapKey = Key.create<CachedValue<Map<String, String>>>("skyhanni.primaryNameMap")
+
+fun buildPrimaryNameMap(project: Project): Map<String, String> =
+    CachedValuesManager.getManager(project).getCachedValue(project, primaryNameMapKey, {
+        CachedValueProvider.Result.create(
+            computePrimaryNameMap(project),
+            PsiModificationTracker.MODIFICATION_COUNT,
+        )
+    }, false)
+
+private fun computePrimaryNameMap(project: Project): Map<String, String> {
     val facade = JavaPsiFacade.getInstance(project)
     val skyHanniEventClass = facade.findClass(SKYHANNI_EVENT_FQN, GlobalSearchScope.allScope(project))
         ?: return emptyMap()
