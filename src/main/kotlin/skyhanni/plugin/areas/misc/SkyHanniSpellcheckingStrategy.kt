@@ -12,14 +12,21 @@ import com.intellij.spellchecker.tokenizer.Tokenizer
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtBinaryExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtLambdaArgument
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.kotlin.psi.KtValueArgument
 import org.jetbrains.kotlin.psi.KtValueArgumentList
+import skyhanni.plugin.areas.event.HANDLE_EVENT_ANNOTATION
+
+private const val SKYHANNI_MODULE_ANNOTATION = "SkyHanniModule"
 
 /**
  * Suppresses IntelliJ inspection warnings in SkyHanni-specific contexts:
+ * - Unused: @SkyHanniModule objects and @HandleEvent functions (used by the SkyHanni framework at runtime).
  * - Spell check (Grazie): RepoPattern keys, command names and aliases (inside registerBrigadier /
  *   registerComplex lambdas), group/groupOrNull arguments, strings containing Minecraft color codes,
  *   and lines containing REGEX-TEST:.
@@ -27,7 +34,20 @@ import org.jetbrains.kotlin.psi.KtValueArgumentList
  */
 class SkyHanniInspectionSuppressor : InspectionSuppressor {
 
-    override fun isSuppressedFor(element: PsiElement, toolId: String): Boolean {
+    override fun isSuppressedFor(element: PsiElement, toolId: String): Boolean =
+        isSuppressedAsUnusedSkyHanniSymbol(element, toolId) || isSuppressedForSpellOrRegex(toolId, element)
+
+    private fun isSuppressedAsUnusedSkyHanniSymbol(element: PsiElement, toolId: String): Boolean {
+        if (toolId != "unused") return false
+        val declaration = element as? KtDeclaration ?: element.parent as? KtDeclaration ?: return false
+        return when (declaration) {
+            is KtObjectDeclaration -> declaration.annotationEntries.any { it.shortName?.asString() == SKYHANNI_MODULE_ANNOTATION }
+            is KtNamedFunction -> declaration.annotationEntries.any { it.shortName?.asString() == HANDLE_EVENT_ANNOTATION }
+            else -> false
+        }
+    }
+
+    private fun isSuppressedForSpellOrRegex(toolId: String, element: PsiElement): Boolean {
         if (toolId == "RegExpRedundantEscape") return element.isInsideRepoPatternRegex()
         if (!toolId.contains("Spell", ignoreCase = true) && !toolId.contains("Grazie", ignoreCase = true)) return false
         if (element.isInsideRegexTestComment()) return true
@@ -42,7 +62,7 @@ class SkyHanniInspectionSuppressor : InspectionSuppressor {
     }
 
     override fun getSuppressActions(element: PsiElement?, toolId: String): Array<SuppressQuickFix> =
-        emptyArray()
+        SuppressQuickFix.EMPTY_ARRAY
 }
 
 class SkyHanniSpellcheckingStrategy : SpellcheckingStrategy() {
