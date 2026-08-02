@@ -142,9 +142,14 @@
             language="kotlin"
             implementationClass="skyhanni.plugin.areas.misc.SkyHanniSpellcheckingStrategy"/>
 
+
         <lang.inspectionSuppressor
             language="kotlin"
             implementationClass="skyhanni.plugin.areas.misc.SkyHanniInspectionSuppressor"/>
+
+        <lang.inspectionSuppressor
+            language="JAVA"
+            implementationClass="skyhanni.plugin.areas.mixin.MixinInspectionSuppressor"/>
 
         <!-- Implicit usages -->
         <implicitUsageProvider
