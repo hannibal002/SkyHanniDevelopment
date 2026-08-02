@@ -3,11 +3,14 @@ package skyhanni.plugin.areas.mixin
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiField
+import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifierListOwner
-import com.intellij.psi.PsiParameter
 
 private const val MIXIN_ANNOTATION = "Mixin"
+
+private const val SHADOW_ANNOTATION = "Shadow"
 
 private val INJECTOR_ANNOTATIONS = setOf(
     "Inject",
@@ -25,7 +28,12 @@ private val INJECTOR_ANNOTATIONS = setOf(
 )
 
 /**
+ * Marks mixin classes, their injector methods, the parameters of those methods and their shadowed
+ * members as used. Shadowed fields are also treated as written, because the value is assigned by the
+ * class the mixin is applied to.
  *
+ * Mixins are never referenced from code, and the Minecraft Development plugin cannot recognize them
+ * either, because SkyHanni generates the mixin configuration at compile time via KSP instead of
  * Mixins are never referenced from code, and the Minecraft Development plugin cannot recognize them
  * either, because SkyHanni generates the mixin configuration at compile time via KSP instead of
  * shipping a static mixin config file.
@@ -34,20 +42,22 @@ class MixinImplicitUsageProvider : ImplicitUsageProvider {
 
     override fun isImplicitUsage(element: PsiElement): Boolean = when (element) {
         is PsiClass -> element.hasAnnotationNamed(MIXIN_ANNOTATION)
-        is PsiMethod -> element.isMixinInjector()
-        is PsiParameter -> (element.declarationScope as? PsiMethod)?.isMixinInjector() == true
+        is PsiMethod -> element.isMixinInjector() || element.isMixinShadow()
+        is PsiField -> element.isMixinShadow()
 
         else -> false
     }
 
     override fun isImplicitRead(element: PsiElement): Boolean = false
 
-    override fun isImplicitWrite(element: PsiElement): Boolean = false
+    override fun isImplicitWrite(element: PsiElement): Boolean = element is PsiField && element.isMixinShadow()
 }
 
-private fun PsiMethod.isMixinInjector(): Boolean =
-    containingClass?.hasAnnotationNamed(MIXIN_ANNOTATION) == true &&
-        INJECTOR_ANNOTATIONS.any { hasAnnotationNamed(it) }
+private fun PsiMember.isInMixinClass(): Boolean = containingClass?.hasAnnotationNamed(MIXIN_ANNOTATION) == true
+
+private fun PsiMethod.isMixinInjector(): Boolean = isInMixinClass() && INJECTOR_ANNOTATIONS.any { hasAnnotationNamed(it) }
+
+private fun PsiMember.isMixinShadow(): Boolean = isInMixinClass() && hasAnnotationNamed(SHADOW_ANNOTATION)
 
 /**
  * Matches on the simple annotation name, so the check also works while the project is not fully
