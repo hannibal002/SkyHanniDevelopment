@@ -33,6 +33,8 @@ class HandleEventInspection : AbstractKotlinInspection() {
         holder: ProblemsHolder,
         isOnTheFly: Boolean,
     ): PsiElementVisitor = object : KtVisitorVoid() {
+        // TODO cut function in smaller functions
+        @Suppress("LongMethod")
         override fun visitNamedFunction(function: KtNamedFunction) {
             if (function.containingClassOrObject !is KtObjectDeclaration) return
             val functionName = function.name ?: return
@@ -132,8 +134,10 @@ class HandleEventInspection : AbstractKotlinInspection() {
             if (isPrimaryFunctionName &&
                 !hasHandleEventAnnotation &&
                 !function.hasModifier(KtTokens.OPEN_KEYWORD) &&
-                !(function.hasModifier(KtTokens.OVERRIDE_KEYWORD) &&
-                    !function.hasModifier(KtTokens.PUBLIC_KEYWORD))
+                !(
+                    function.hasModifier(KtTokens.OVERRIDE_KEYWORD) &&
+                        !function.hasModifier(KtTokens.PUBLIC_KEYWORD)
+                    )
             ) {
                 val eventClass = primaryNameMap[functionName]?.substringAfterLast('.') ?: functionName
                 holder.registerProblem(
