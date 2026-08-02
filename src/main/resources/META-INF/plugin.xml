@@ -145,5 +145,9 @@
         <lang.inspectionSuppressor
             language="kotlin"
             implementationClass="skyhanni.plugin.areas.misc.SkyHanniInspectionSuppressor"/>
+
+        <!-- Implicit usages -->
+        <implicitUsageProvider
+            implementation="skyhanni.plugin.areas.mixin.MixinImplicitUsageProvider"/>
     </extensions>
 </idea-plugin>

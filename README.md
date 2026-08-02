@@ -82,6 +82,9 @@ config class hierarchy.
     - *Spell check:* Strings containing Minecraft color codes (`§`)
     - *Spell check:* Regex test lines (lines marked with `REGEX-TEST:`)
     - *Redundant escape:* Regex strings in `RepoPattern.pattern()` calls (the `\/` escape is sometimes necessary by the regex test logic)
+- **Mixin usage detection** - Marks `@Mixin` classes and their `@Inject`, `@WrapOperation`, `@ModifyArg` and `@ModifyVariable` methods as
+  used. Mixins are only referenced from the mixin configuration, which SkyHanni generates at compile time, so IntelliJ would otherwise
+  report all of them as unused.
 
 ---
 
